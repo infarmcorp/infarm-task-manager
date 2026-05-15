@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 
 const G = {
   50:"#f0faf4",100:"#d4f0e0",200:"#a8e0c0",300:"#6cc99d",
@@ -15,24 +15,218 @@ const STATUS={
 };
 const PIC_STYLE={Denny:{bg:G[100],text:G[700]},Arum:{bg:"#fce7f3",text:"#9d174d"}};
 
-// =====================================================
-// GANTI INI DENGAN LINK GOOGLE FORM KAMU
-// =====================================================
-const REQUEST_FORM_LINK = "https://docs.google.com/forms/d/e/1FAIpQLSdL64My24bSHXa_Eupj4jmW9lZZuEHdDiBTqrpTafZsivXoFQ/viewform?usp=header";
-// =====================================================
-
 const DEMO=[
   {id:1,title:"Social Media Post - Promo Lebaran",category:"Social Media Post",status:"todo",pic:"Denny",dueDate:"2025-05-14",requestedBy:"Sales Team",description:"Post IG & TikTok untuk promo lebaran",createdDate:"2025-05-01",comments:[{id:1,author:"Denny",text:"Sudah ada brief visual-nya?",time:"2 Mei, 09:15"}],attachments:[]},
-  {id:2,title:"Banner Marketplace - Flash Sale",category:"Banner Marketplace",status:"on_progress",pic:"Arum",dueDate:"2025-05-13",requestedBy:"Sales Team",description:"Banner Tokopedia & Shopee 1200x628",createdDate:"2025-05-05",comments:[],attachments:[{id:1,name:"brief_flash_sale.pdf",type:"pdf",size:"240 KB"}]},
-  {id:3,title:"Desain Kemasan - Premium Line",category:"Kemasan Baru",status:"finish",pic:"Denny",dueDate:"2025-04-30",requestedBy:"Bidev Team",description:"Packaging produk premium hidroponik",createdDate:"2025-04-20",comments:[{id:1,author:"Arum",text:"Revisi warna sudah sesuai",time:"28 Apr, 14:00"}],attachments:[]},
-  {id:4,title:"Template Loker - Desainer Grafis",category:"Poster",status:"request",pic:null,dueDate:"2025-05-20",requestedBy:"HRD",description:"Template posting lowongan untuk IG Stories",createdDate:"2025-05-10",comments:[],attachments:[]}
+  {id:2,title:"Banner Marketplace - Flash Sale",category:"Banner Marketplace",status:"on_progress",pic:"Arum",dueDate:"2025-05-13",requestedBy:"Sales Team",description:"Banner Tokopedia & Shopee 1200x628",createdDate:"2025-05-05",comments:[],attachments:[]},
+  {id:3,title:"Desain Kemasan - Premium Line",category:"Kemasan Baru",status:"finish",pic:"Denny",dueDate:"2025-04-30",requestedBy:"Bidev Team",description:"Packaging produk premium hidroponik",createdDate:"2025-04-20",comments:[],attachments:[]},
 ];
 
-export default function App() {
-  const [tasks,setTasks]=useState(DEMO);
+// ─── STORAGE HELPERS ───────────────────────────────────────────
+const STORAGE_KEY = "infarm_tasks";
+const loadTasks = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return DEMO;
+};
+const saveTasks = (tasks) => {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); } catch(e) {}
+};
+
+// ─── REQUEST FORM PAGE ─────────────────────────────────────────
+function RequestPage() {
+  const [form, setForm] = useState({title:"",category:"Social Media Post",requestedBy:"Sales Team",description:"",dueDate:"",attachments:[]});
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const fileRef = useRef(null);
+
+  const handleFiles = e => {
+    const files = Array.from(e.target.files);
+    const atts = files.map(f => ({
+      id: Date.now()+Math.random(),
+      name: f.name,
+      type: f.type.startsWith("image/")?"image":f.name.includes(".pdf")?"pdf":"excel",
+      size: f.size>1048576?(f.size/1048576).toFixed(1)+" MB":Math.round(f.size/1024)+" KB",
+      dataUrl: null, file: f
+    }));
+    const proc = idx => {
+      if(idx>=atts.length){
+        setForm(prev=>({...prev,attachments:[...(prev.attachments||[]),...atts]}));
+        return;
+      }
+      if(atts[idx].type==="image"){
+        const r=new FileReader();
+        r.onload=ev=>{atts[idx].dataUrl=ev.target.result;proc(idx+1);};
+        r.readAsDataURL(atts[idx].file);
+      } else proc(idx+1);
+    };
+    proc(0);
+  };
+
+  const removeAtt = id => setForm(prev=>({...prev,attachments:prev.attachments.filter(a=>a.id!==id)}));
+
+  const handleSubmit = e => {
+    e.preventDefault();
+    setLoading(true);
+    setTimeout(() => {
+      const tasks = loadTasks();
+      const newTask = {
+        id: Date.now(),
+        title: form.title,
+        category: form.category,
+        requestedBy: form.requestedBy,
+        description: form.description,
+        dueDate: form.dueDate,
+        attachments: form.attachments || [],
+        status: "request",
+        pic: null,
+        comments: [],
+        createdDate: new Date().toISOString().split("T")[0],
+      };
+      saveTasks([...tasks, newTask]);
+      setLoading(false);
+      setSubmitted(true);
+    }, 800);
+  };
+
+  if (submitted) return (
+    <div style={{minHeight:"100vh",background:`linear-gradient(135deg,${G[800]},${G[500]})`,display:"flex",alignItems:"center",justifyContent:"center",padding:"20px"}}>
+      <div style={{background:"#fff",borderRadius:"24px",padding:"40px 32px",maxWidth:"420px",width:"100%",textAlign:"center"}}>
+        <div style={{width:"72px",height:"72px",borderRadius:"50%",background:G[50],border:`3px solid ${G[400]}`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px"}}>
+          <i className="ti ti-check" style={{fontSize:"36px",color:G[500]}}/>
+        </div>
+        <h2 style={{margin:"0 0 10px 0",fontSize:"22px",fontWeight:"700",color:"#111827"}}>Request Terkirim! 🎉</h2>
+        <p style={{margin:"0 0 6px 0",fontSize:"14px",color:"#6b7280",lineHeight:"1.6"}}>
+          Request desain kamu sudah diterima oleh tim Infarm Design.
+        </p>
+        <p style={{margin:"0 0 24px 0",fontSize:"13px",color:"#9ca3af"}}>Tim desain akan segera memprosesnya.</p>
+        <div style={{background:G[50],borderRadius:"12px",padding:"14px",marginBottom:"24px",border:`1px solid ${G[100]}`}}>
+          <p style={{margin:0,fontSize:"13px",color:G[700],fontWeight:"500"}}>📋 {form.title}</p>
+          <p style={{margin:"4px 0 0 0",fontSize:"12px",color:G[600]}}>{form.category} · {form.requestedBy}</p>
+        </div>
+        <button onClick={()=>{setSubmitted(false);setForm({title:"",category:"Social Media Post",requestedBy:"Sales Team",description:"",dueDate:"",attachments:[]});}} style={{width:"100%",padding:"12px",background:`linear-gradient(135deg,${G[800]},${G[500]})`,color:"#fff",border:"none",borderRadius:"12px",cursor:"pointer",fontSize:"14px",fontWeight:"600"}}>
+          + Request Desain Lagi
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{minHeight:"100vh",background:`linear-gradient(135deg,${G[800]},${G[500]})`,padding:"20px"}}>
+      {/* Header */}
+      <div style={{maxWidth:"560px",margin:"0 auto"}}>
+        <div style={{display:"flex",alignItems:"center",gap:"12px",marginBottom:"24px"}}>
+          <div style={{width:"44px",height:"44px",borderRadius:"12px",background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(255,255,255,0.25)",flexShrink:0}}>
+            <svg width="28" height="28" viewBox="0 0 100 100" fill="none">
+              <ellipse cx="50" cy="30" rx="14" ry="22" fill="#4ade80" transform="rotate(-20 50 30)"/>
+              <ellipse cx="50" cy="30" rx="14" ry="22" fill="#22c55e" transform="rotate(20 50 30)"/>
+              <ellipse cx="50" cy="22" rx="10" ry="18" fill="#16a34a"/>
+              <rect x="47" y="44" width="6" height="8" rx="2" fill="#9ca3af"/>
+              <rect x="35" y="52" width="30" height="5" rx="2.5" fill="#9ca3af"/>
+              <path d="M50 57 L50 68" stroke="#60a5fa" strokeWidth="3.5"/>
+              <path d="M34 68 Q50 57 66 68" stroke="#60a5fa" strokeWidth="3.5" fill="none"/>
+              <path d="M30 75 Q50 62 70 75" stroke="#60a5fa" strokeWidth="3.5" fill="none"/>
+            </svg>
+          </div>
+          <div>
+            <h1 style={{margin:0,fontSize:"18px",fontWeight:"700",color:"#fff"}}>Request Desain</h1>
+            <p style={{margin:0,fontSize:"12px",color:"rgba(255,255,255,0.7)"}}>INFARM.ID — Tim Desain</p>
+          </div>
+        </div>
+
+        {/* Form card */}
+        <div style={{background:"#fff",borderRadius:"20px",padding:"24px"}}>
+          <p style={{margin:"0 0 20px 0",fontSize:"13px",color:"#6b7280",lineHeight:"1.6",background:G[50],padding:"12px",borderRadius:"10px",border:`1px solid ${G[100]}`}}>
+            <i className="ti ti-info-circle" style={{color:G[500],marginRight:"6px"}}/>
+            Isi form ini untuk request desain ke tim Infarm Design. Tim akan memproses request kamu segera.
+          </p>
+          <form onSubmit={handleSubmit}>
+            {/* Judul */}
+            <div style={{marginBottom:"14px"}}>
+              <label style={{display:"block",fontSize:"12px",fontWeight:"600",marginBottom:"5px",color:"#374151"}}>Judul Request *</label>
+              <input type="text" value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="Contoh: Banner Flash Sale Tokopedia" required style={{width:"100%",boxSizing:"border-box",borderRadius:"10px",border:"1px solid #e5e7eb",padding:"9px 12px",fontSize:"13px"}}/>
+            </div>
+
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px",marginBottom:"14px"}}>
+              {/* Kategori */}
+              <div>
+                <label style={{display:"block",fontSize:"12px",fontWeight:"600",marginBottom:"5px",color:"#374151"}}>Kategori *</label>
+                <select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} style={{width:"100%",boxSizing:"border-box",borderRadius:"10px",border:"1px solid #e5e7eb",padding:"9px 12px",fontSize:"13px"}}>
+                  {CATEGORIES.map(c=><option key={c}>{c}</option>)}
+                </select>
+              </div>
+              {/* Deadline */}
+              <div>
+                <label style={{display:"block",fontSize:"12px",fontWeight:"600",marginBottom:"5px",color:"#374151"}}>Deadline *</label>
+                <input type="date" value={form.dueDate} onChange={e=>setForm({...form,dueDate:e.target.value})} required style={{width:"100%",boxSizing:"border-box",borderRadius:"10px",border:"1px solid #e5e7eb",padding:"9px 12px",fontSize:"13px"}}/>
+              </div>
+              {/* Di-request oleh */}
+              <div>
+                <label style={{display:"block",fontSize:"12px",fontWeight:"600",marginBottom:"5px",color:"#374151"}}>Di-request Oleh *</label>
+                <select value={form.requestedBy} onChange={e=>setForm({...form,requestedBy:e.target.value})} style={{width:"100%",boxSizing:"border-box",borderRadius:"10px",border:"1px solid #e5e7eb",padding:"9px 12px",fontSize:"13px"}}>
+                  {REQUESTER_LIST.map(r=><option key={r}>{r}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* Deskripsi */}
+            <div style={{marginBottom:"14px"}}>
+              <label style={{display:"block",fontSize:"12px",fontWeight:"600",marginBottom:"5px",color:"#374151"}}>Deskripsi / Brief</label>
+              <textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="Jelaskan kebutuhan desain, ukuran, tone, referensi, dll..." style={{width:"100%",boxSizing:"border-box",minHeight:"80px",borderRadius:"10px",border:"1px solid #e5e7eb",padding:"9px 12px",fontSize:"13px",resize:"vertical"}}/>
+            </div>
+
+            {/* Attachment */}
+            <div style={{marginBottom:"20px"}}>
+              <label style={{display:"block",fontSize:"12px",fontWeight:"600",marginBottom:"5px",color:"#374151"}}>
+                Attachment Referensi
+                <span style={{fontWeight:"400",color:"#9ca3af",marginLeft:"6px"}}>— gambar, PDF, brief, dll (opsional)</span>
+              </label>
+              <div style={{border:`2px dashed ${G[200]}`,borderRadius:"12px",padding:"14px",background:G[50],cursor:"pointer"}} onClick={()=>fileRef.current?.click()}>
+                {(form.attachments||[]).length===0 ? (
+                  <div style={{textAlign:"center"}}>
+                    <i className="ti ti-upload" style={{fontSize:"24px",color:G[300],display:"block",marginBottom:"5px"}}/>
+                    <p style={{margin:0,fontSize:"12px",color:G[500]}}>Klik untuk upload file referensi</p>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:"7px",marginBottom:"8px"}}>
+                      {form.attachments.map(att=>(
+                        <div key={att.id} style={{background:"#fff",borderRadius:"10px",padding:"8px",position:"relative",border:"1px solid #e5e7eb"}}>
+                          <button type="button" onClick={e=>{e.stopPropagation();removeAtt(att.id);}} style={{position:"absolute",top:"4px",right:"4px",background:"rgba(239,68,68,0.1)",border:"none",cursor:"pointer",width:"17px",height:"17px",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",color:"#ef4444",padding:0}}><i className="ti ti-x" style={{fontSize:"10px"}}/></button>
+                          {att.type==="image"&&att.dataUrl
+                            ?<img src={att.dataUrl} alt={att.name} style={{width:"100%",height:"55px",objectFit:"cover",borderRadius:"7px",display:"block",marginBottom:"4px"}}/>
+                            :<div style={{width:"100%",height:"42px",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:"4px"}}><i className={`ti ${att.type==="pdf"?"ti-file-type-pdf":"ti-file-spreadsheet"}`} style={{fontSize:"22px",color:"#6b7280"}}/></div>
+                          }
+                          <p style={{margin:0,fontSize:"10px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"#374151",paddingRight:"12px"}}>{att.name}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <p style={{margin:0,fontSize:"11px",color:G[600],textAlign:"center"}}>+ Klik untuk tambah file lagi</p>
+                  </div>
+                )}
+              </div>
+              <input ref={fileRef} type="file" multiple accept="image/*,.pdf,.xlsx,.xls,.csv" style={{display:"none"}} onChange={handleFiles}/>
+            </div>
+
+            <button type="submit" disabled={loading} style={{width:"100%",padding:"12px",background:loading?"#9ca3af":`linear-gradient(135deg,${G[800]},${G[500]})`,color:"#fff",border:"none",borderRadius:"12px",cursor:loading?"not-allowed":"pointer",fontSize:"14px",fontWeight:"600",display:"flex",alignItems:"center",justifyContent:"center",gap:"8px"}}>
+              {loading ? <><i className="ti ti-loader-2" style={{fontSize:"16px",animation:"spin 1s linear infinite"}}/>Mengirim...</> : <><i className="ti ti-send" style={{fontSize:"16px"}}/>Kirim Request</>}
+            </button>
+          </form>
+        </div>
+
+        <p style={{textAlign:"center",marginTop:"16px",fontSize:"12px",color:"rgba(255,255,255,0.5)"}}>
+          INFARM.ID © 2025 · Tim Desain Internal
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── MAIN BOARD APP ────────────────────────────────────────────
+function BoardApp() {
+  const [tasks,setTasks]=useState(loadTasks);
   const [view,setView]=useState("kanban");
-  const [showRequestModal,setShowRequestModal]=useState(false);
-  const [showManualForm,setShowManualForm]=useState(false);
   const [selected,setSelected]=useState(null);
   const [fPIC,setFPIC]=useState("all");
   const [fStatus,setFStatus]=useState("all");
@@ -41,13 +235,23 @@ export default function App() {
   const [customTo,setCustomTo]=useState("");
   const [newComment,setNewComment]=useState("");
   const [commentBy,setCommentBy]=useState("Denny");
-  const [emailLog,setEmailLog]=useState([]);
   const [showLog,setShowLog]=useState(false);
+  const [emailLog,setEmailLog]=useState([]);
   const [exportMsg,setExportMsg]=useState("");
   const [linkCopied,setLinkCopied]=useState(false);
   const detailFileRef=useRef(null);
-  const formFileRef=useRef(null);
-  const [form,setForm]=useState({title:"",category:"Social Media Post",requestedBy:"Sales Team",description:"",dueDate:"",pic:"",attachments:[]});
+
+  // Sync tasks ke localStorage setiap ada perubahan
+  useEffect(()=>{ saveTasks(tasks); },[tasks]);
+
+  // Auto-refresh setiap 5 detik untuk tangkap request baru
+  useEffect(()=>{
+    const interval = setInterval(()=>{
+      const stored = loadTasks();
+      if(stored.length !== tasks.length) setTasks(stored);
+    }, 5000);
+    return () => clearInterval(interval);
+  },[tasks.length]);
 
   const today=new Date(); today.setHours(0,0,0,0);
   const fmtDate=d=>d?new Date(d).toLocaleDateString("id-ID",{day:"numeric",month:"short",year:"numeric"}):"-";
@@ -69,7 +273,6 @@ export default function App() {
   const byS=s=>filtered.filter(t=>t.status===s);
   const allByS=s=>tasks.filter(t=>t.status===s);
   const reminders=useMemo(()=>tasks.filter(t=>isSoon(t)),[tasks]);
-
   const analytics=useMemo(()=>{
     const total=tasks.length,done=tasks.filter(t=>t.status==="finish").length,over=tasks.filter(t=>isOverdue(t)).length;
     const byPIC={};
@@ -77,37 +280,11 @@ export default function App() {
     return{total,done,over,rate:total>0?Math.round(done/total*100):0,byPIC};
   },[tasks]);
 
-  const triggerEmail=(type,task)=>{
-    const msgs={status:`Status Update: "${task.title}" → ${STATUS[task.status]?.label}`,new_task:`Request Baru: "${task.title}" dari ${task.requestedBy}`};
-    setEmailLog(prev=>[{id:Date.now(),type,msg:msgs[type],time:new Date().toLocaleTimeString("id-ID")},...prev]);
-  };
-
   const moveTask=(id,ns)=>{
-    setTasks(prev=>prev.map(t=>{if(t.id!==id)return t;const u={...t,status:ns};triggerEmail("status",u);return u;}));
+    setTasks(prev=>prev.map(t=>{if(t.id!==id)return t;const u={...t,status:ns};return u;}));
     if(selected?.id===id)setSelected(prev=>({...prev,status:ns}));
   };
   const deleteTask=id=>{setTasks(prev=>prev.filter(t=>t.id!==id));if(selected?.id===id)setSelected(null);};
-
-  const copyLink=()=>{
-    navigator.clipboard?.writeText(REQUEST_FORM_LINK).catch(()=>{});
-    setLinkCopied(true);setTimeout(()=>setLinkCopied(false),2000);
-  };
-
-  // Handle file upload on manual form
-  const handleFormFiles=e=>{
-    const files=Array.from(e.target.files);
-    const atts=files.map(f=>({id:Date.now()+Math.random(),name:f.name,type:f.type.startsWith("image/")?"image":f.name.includes(".pdf")?"pdf":"excel",size:f.size>1048576?(f.size/1048576).toFixed(1)+" MB":Math.round(f.size/1024)+" KB",dataUrl:null,file:f}));
-    const proc=idx=>{if(idx>=atts.length){setForm(prev=>({...prev,attachments:[...(prev.attachments||[]),...atts]}));return;}if(atts[idx].type==="image"){const r=new FileReader();r.onload=ev=>{atts[idx].dataUrl=ev.target.result;proc(idx+1);};r.readAsDataURL(atts[idx].file);}else proc(idx+1);};proc(0);
-  };
-  const removeFormAtt=id=>setForm(prev=>({...prev,attachments:prev.attachments.filter(a=>a.id!==id)}));
-
-  const submitForm=e=>{
-    e.preventDefault();
-    const nt={id:Math.max(0,...tasks.map(t=>t.id))+1,...form,pic:form.pic||null,status:"request",createdDate:new Date().toISOString().split("T")[0],comments:[],attachments:form.attachments||[]};
-    setTasks(prev=>[...prev,nt]);triggerEmail("new_task",nt);
-    setForm({title:"",category:"Social Media Post",requestedBy:"Sales Team",description:"",dueDate:"",pic:"",attachments:[]});
-    setShowManualForm(false);setShowRequestModal(false);
-  };
 
   const addComment=()=>{
     if(!newComment.trim()||!selected)return;
@@ -131,18 +308,23 @@ export default function App() {
     setExportMsg("Export berhasil!");setTimeout(()=>setExportMsg(""),3000);
   };
 
+  const copyRequestLink=()=>{
+    const link = window.location.origin + "/#/request";
+    navigator.clipboard?.writeText(link).catch(()=>{});
+    setLinkCopied(true);setTimeout(()=>setLinkCopied(false),2000);
+  };
+
   const PICAvatar=({name,size=28})=>{const s=PIC_STYLE[name]||PIC_STYLE.Denny;return <div style={{width:size,height:size,borderRadius:"50%",background:s.bg,color:s.text,display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*0.42,fontWeight:"600",flexShrink:0}}>{name?.[0]}</div>;};
-  const FileIcon=({type})=>{const ic={image:"ti-photo",pdf:"ti-file-type-pdf",excel:"ti-file-spreadsheet"};return <i className={`ti ${ic[type]||"ti-file"}`} style={{fontSize:"20px",color:"#6b7280"}}/>;};
   const Badge=({status})=>(<span style={{fontSize:"11px",padding:"3px 10px",borderRadius:"20px",background:STATUS[status]?.bg,color:STATUS[status]?.text,fontWeight:"600",border:`1px solid ${STATUS[status]?.border}`,display:"inline-flex",alignItems:"center",gap:"5px"}}><span style={{width:"6px",height:"6px",borderRadius:"50%",background:STATUS[status]?.dot}}/>{STATUS[status]?.label}</span>);
 
   const TaskCard=({task})=>(
-    <div onClick={()=>setSelected(task)} style={{background:"var(--color-background-primary)",borderRadius:"14px",padding:"13px",marginBottom:"10px",cursor:"pointer",transition:"transform .15s",borderLeft:`4px solid ${isOverdue(task)?"#ef4444":isSoon(task)?"#f59e0b":STATUS[task.status]?.dot}`,border:`1px solid ${isOverdue(task)?"#fecaca":"var(--color-border-tertiary)"}`,borderLeftWidth:"4px"}}
+    <div onClick={()=>setSelected(task)} style={{background:"#fff",borderRadius:"14px",padding:"13px",marginBottom:"10px",cursor:"pointer",transition:"transform .15s",borderLeft:`4px solid ${isOverdue(task)?"#ef4444":isSoon(task)?"#f59e0b":STATUS[task.status]?.dot}`,border:`1px solid ${isOverdue(task)?"#fecaca":"#f0f0f0"}`,borderLeftWidth:"4px",boxShadow:"0 1px 4px rgba(0,0,0,0.05)"}}
       onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
       onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}
     >
       <div style={{display:"flex",justifyContent:"space-between",gap:"8px",marginBottom:"8px"}}>
-        <p style={{margin:0,fontSize:"13px",fontWeight:"500",flex:1,lineHeight:"1.4",color:"var(--color-text-primary)"}}>{task.title}</p>
-        <button onClick={e=>{e.stopPropagation();deleteTask(task.id);}} style={{background:"transparent",border:"none",cursor:"pointer",padding:"2px",color:"var(--color-text-danger)",flexShrink:0}}><i className="ti ti-trash" style={{fontSize:"14px"}}/></button>
+        <p style={{margin:0,fontSize:"13px",fontWeight:"600",flex:1,lineHeight:"1.4",color:"#111827"}}>{task.title}</p>
+        <button onClick={e=>{e.stopPropagation();deleteTask(task.id);}} style={{background:"transparent",border:"none",cursor:"pointer",padding:"2px",color:"#ef4444",flexShrink:0}}><i className="ti ti-trash" style={{fontSize:"14px"}}/></button>
       </div>
       <div style={{display:"flex",gap:"5px",flexWrap:"wrap",marginBottom:"8px"}}>
         <span style={{fontSize:"10px",background:G[50],color:G[700],padding:"2px 8px",borderRadius:"20px",border:`1px solid ${G[100]}`}}>{task.category}</span>
@@ -150,13 +332,13 @@ export default function App() {
         {isSoon(task)&&!isOverdue(task)&&<span style={{fontSize:"10px",background:"#fef3c7",color:"#78350f",padding:"2px 8px",borderRadius:"20px",fontWeight:"600"}}>Besok!</span>}
       </div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <span style={{fontSize:"11px",color:isOverdue(task)?"#ef4444":isSoon(task)?"#f59e0b":"var(--color-text-secondary)",display:"flex",alignItems:"center",gap:"4px"}}>
+        <span style={{fontSize:"11px",color:isOverdue(task)?"#ef4444":isSoon(task)?"#f59e0b":"#9ca3af",display:"flex",alignItems:"center",gap:"4px"}}>
           <i className="ti ti-calendar" style={{fontSize:"12px"}}/>{fmtDate(task.dueDate)}
         </span>
         <div style={{display:"flex",alignItems:"center",gap:"6px"}}>
           {task.pic&&<PICAvatar name={task.pic} size={20}/>}
-          {(task.comments||[]).length>0&&<span style={{fontSize:"10px",color:"var(--color-text-secondary)",display:"flex",alignItems:"center",gap:"2px"}}><i className="ti ti-message" style={{fontSize:"11px"}}/>{task.comments.length}</span>}
-          {(task.attachments||[]).length>0&&<span style={{fontSize:"10px",color:"var(--color-text-secondary)",display:"flex",alignItems:"center",gap:"2px"}}><i className="ti ti-paperclip" style={{fontSize:"11px"}}/>{task.attachments.length}</span>}
+          {(task.comments||[]).length>0&&<span style={{fontSize:"10px",color:"#9ca3af",display:"flex",alignItems:"center",gap:"2px"}}><i className="ti ti-message" style={{fontSize:"11px"}}/>{task.comments.length}</span>}
+          {(task.attachments||[]).length>0&&<span style={{fontSize:"10px",color:"#9ca3af",display:"flex",alignItems:"center",gap:"2px"}}><i className="ti ti-paperclip" style={{fontSize:"11px"}}/>{task.attachments.length}</span>}
         </div>
       </div>
       <div style={{display:"flex",gap:"5px",marginTop:"8px",flexWrap:"wrap"}} onClick={e=>e.stopPropagation()}>
@@ -175,12 +357,9 @@ export default function App() {
     {key:"finish",label:"Finish",dot:"#059669",hbg:"#ecfdf5"},
   ];
 
-  const inputStyle={width:"100%",boxSizing:"border-box",borderRadius:"10px",border:"1px solid #e5e7eb",padding:"8px 12px",fontSize:"13px",background:"#fff"};
-
   return (
     <div style={{fontFamily:"system-ui,sans-serif",background:"#f7f9f7",minHeight:"100vh"}}>
-
-      {/* ── HEADER ── */}
+      {/* HEADER */}
       <div style={{background:`linear-gradient(135deg,${G[800]},${G[600]})`,borderRadius:"0 0 22px 22px",marginBottom:"18px"}}>
         <div style={{padding:"18px 20px 0",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"10px"}}>
           <div style={{display:"flex",alignItems:"center",gap:"12px"}}>
@@ -194,27 +373,24 @@ export default function App() {
                 <path d="M50 57 L50 68" stroke="#60a5fa" strokeWidth="3.5"/>
                 <path d="M34 68 Q50 57 66 68" stroke="#60a5fa" strokeWidth="3.5" fill="none"/>
                 <path d="M30 75 Q50 62 70 75" stroke="#60a5fa" strokeWidth="3.5" fill="none"/>
-                <path d="M27 82 Q50 68 73 82" stroke="#60a5fa" strokeWidth="3.5" fill="none"/>
               </svg>
             </div>
             <div>
               <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
-                <h1 style={{margin:0,fontSize:"19px",fontWeight:"600",color:"#fff",letterSpacing:"-0.2px"}}>Design Task Manager</h1>
+                <h1 style={{margin:0,fontSize:"19px",fontWeight:"700",color:"#fff"}}>Design Task Manager</h1>
                 <span style={{fontSize:"10px",background:"rgba(255,255,255,0.18)",color:"#fff",padding:"2px 8px",borderRadius:"20px",border:"1px solid rgba(255,255,255,0.25)"}}>INFARM.ID</span>
               </div>
               <p style={{margin:0,fontSize:"12px",color:"rgba(255,255,255,0.65)"}}>Tim Desain Internal · Denny & Arum</p>
             </div>
           </div>
           <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}>
-            <button onClick={()=>setShowLog(!showLog)} style={{fontSize:"12px",padding:"6px 12px",background:"rgba(255,255,255,0.12)",color:"#fff",border:"1px solid rgba(255,255,255,0.25)",borderRadius:"20px",cursor:"pointer",display:"flex",alignItems:"center",gap:"5px"}}>
-              <i className="ti ti-bell" style={{fontSize:"13px"}}/>
-              {emailLog.length>0&&<span style={{background:"#ef4444",color:"#fff",fontSize:"10px",padding:"1px 5px",borderRadius:"10px",fontWeight:"700"}}>{emailLog.length}</span>}
+            {/* Share Request Link */}
+            <button onClick={copyRequestLink} style={{fontSize:"12px",padding:"6px 12px",background:"rgba(255,255,255,0.12)",color:"#fff",border:"1px solid rgba(255,255,255,0.25)",borderRadius:"20px",cursor:"pointer",display:"flex",alignItems:"center",gap:"5px"}}>
+              <i className={`ti ${linkCopied?"ti-check":"ti-link"}`} style={{fontSize:"13px"}}/>
+              {linkCopied?"Link Copied!":"Copy Link Request"}
             </button>
             <button onClick={exportCSV} style={{fontSize:"12px",padding:"6px 12px",background:"rgba(255,255,255,0.12)",color:"#fff",border:"1px solid rgba(255,255,255,0.25)",borderRadius:"20px",cursor:"pointer",display:"flex",alignItems:"center",gap:"5px"}}>
               <i className="ti ti-download" style={{fontSize:"13px"}}/>Export
-            </button>
-            <button onClick={()=>setShowRequestModal(true)} style={{fontSize:"12px",padding:"6px 14px",background:"#fff",color:G[700],border:"none",borderRadius:"20px",cursor:"pointer",fontWeight:"600",display:"flex",alignItems:"center",gap:"5px"}}>
-              <i className="ti ti-send" style={{fontSize:"13px"}}/>Request Desain
             </button>
           </div>
         </div>
@@ -229,171 +405,22 @@ export default function App() {
       </div>
 
       <div style={{padding:"0 14px 24px"}}>
-
         {exportMsg&&<div style={{background:"#d1fae5",border:"1px solid #a7f3d0",borderRadius:"10px",padding:"10px 14px",marginBottom:"12px",fontSize:"13px",color:"#064e3b",fontWeight:"500"}}>{exportMsg}</div>}
 
-        {/* ── MODAL: REQUEST DESAIN ── */}
-        {showRequestModal&&(
-          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
-            <div style={{background:"#fff",borderRadius:"20px",padding:"24px",width:"min(480px,92vw)",maxHeight:"90vh",overflowY:"auto",border:"1px solid #e5e7eb"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"18px"}}>
-                <h3 style={{margin:0,fontSize:"16px",fontWeight:"600",color:"#111827"}}>Request Desain</h3>
-                <button onClick={()=>{setShowRequestModal(false);setShowManualForm(false);}} style={{background:"#f3f4f6",border:"none",cursor:"pointer",width:"30px",height:"30px",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",color:"#6b7280"}}><i className="ti ti-x" style={{fontSize:"14px"}}/></button>
-              </div>
-
-              {!showManualForm ? (
-                <>
-                  {/* Info card */}
-                  <div style={{background:G[50],borderRadius:"12px",padding:"14px",marginBottom:"16px",border:`1px solid ${G[100]}`}}>
-                    <p style={{margin:"0 0 6px 0",fontSize:"13px",color:G[700],fontWeight:"600",display:"flex",alignItems:"center",gap:"6px"}}>
-                      <i className="ti ti-info-circle" style={{fontSize:"16px"}}/>Cara Request Desain ke Tim Infarm
-                    </p>
-                    <p style={{margin:0,fontSize:"12px",color:G[600],lineHeight:"1.7"}}>
-                      Share link Google Form di bawah ke tim yang butuh desain. Setelah form diisi, tim desain akan otomatis mendapat notifikasi dan task akan masuk ke board.
-                    </p>
-                  </div>
-
-                  {/* Link Google Form */}
-                  <div style={{marginBottom:"16px"}}>
-                    <label style={{display:"block",fontSize:"12px",fontWeight:"600",marginBottom:"6px",color:"#374151"}}>Link Form Request Desain</label>
-                    <div style={{display:"flex",gap:"8px",alignItems:"center"}}>
-                      <div style={{flex:1,background:"#f9fafb",border:"1px solid #e5e7eb",borderRadius:"10px",padding:"9px 12px",fontSize:"12px",color:"#6b7280",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                        {REQUEST_FORM_LINK}
-                      </div>
-                      <button onClick={copyLink} style={{padding:"9px 14px",background:linkCopied?G[50]:G[600],color:linkCopied?G[700]:"#fff",border:`1px solid ${linkCopied?G[200]:"transparent"}`,borderRadius:"10px",cursor:"pointer",fontSize:"12px",fontWeight:"600",flexShrink:0,display:"flex",alignItems:"center",gap:"5px",transition:"all .2s"}}>
-                        <i className={`ti ${linkCopied?"ti-check":"ti-copy"}`} style={{fontSize:"13px"}}/>
-                        {linkCopied?"Copied!":"Copy Link"}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Share options */}
-                  <div style={{marginBottom:"20px"}}>
-                    <label style={{display:"block",fontSize:"12px",fontWeight:"600",marginBottom:"8px",color:"#374151"}}>Share ke Tim via</label>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"8px"}}>
-                      {[
-                        {ic:"ti-brand-whatsapp",label:"WhatsApp",color:"#25d366",bg:"#f0fdf4",border:"#bbf7d0"},
-                        {ic:"ti-mail",label:"Email",color:"#2563eb",bg:"#eff6ff",border:"#bfdbfe"},
-                        {ic:"ti-external-link",label:"Buka Form",color:G[600],bg:G[50],border:G[200]},
-                      ].map(s=>(
-                        <button key={s.label} style={{padding:"12px 8px",background:s.bg,border:`1px solid ${s.border}`,borderRadius:"12px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:"6px"}}>
-                          <i className={`ti ${s.ic}`} style={{fontSize:"22px",color:s.color}}/>
-                          <span style={{fontSize:"11px",color:s.color,fontWeight:"600"}}>{s.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div style={{borderTop:"1px solid #f3f4f6",paddingTop:"14px"}}>
-                    <p style={{margin:"0 0 8px 0",fontSize:"12px",color:"#6b7280"}}>Tim desain bisa juga input task langsung:</p>
-                    <button onClick={()=>setShowManualForm(true)} style={{width:"100%",padding:"10px",background:`linear-gradient(135deg,${G[800]},${G[500]})`,color:"#fff",border:"none",borderRadius:"12px",cursor:"pointer",fontSize:"13px",fontWeight:"600",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"}}>
-                      <i className="ti ti-plus" style={{fontSize:"14px"}}/>Input Task Manual
-                    </button>
-                  </div>
-                </>
-              ) : (
-                /* ── MANUAL FORM dengan attachment ── */
-                <form onSubmit={submitForm}>
-                  <button type="button" onClick={()=>setShowManualForm(false)} style={{background:"none",border:"none",cursor:"pointer",fontSize:"12px",color:G[600],marginBottom:"14px",display:"flex",alignItems:"center",gap:"4px",padding:0}}>
-                    <i className="ti ti-arrow-left" style={{fontSize:"13px"}}/>Kembali
-                  </button>
-
-                  <div style={{display:"grid",gap:"12px",marginBottom:"12px"}}>
-                    <div>
-                      <label style={{display:"block",fontSize:"12px",fontWeight:"600",marginBottom:"5px",color:"#374151"}}>Judul Request *</label>
-                      <input type="text" value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="Contoh: Banner Flash Sale Tokopedia" required style={inputStyle}/>
-                    </div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px"}}>
-                      <div>
-                        <label style={{display:"block",fontSize:"12px",fontWeight:"600",marginBottom:"5px",color:"#374151"}}>Kategori *</label>
-                        <select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} style={inputStyle}>
-                          {CATEGORIES.map(c=><option key={c}>{c}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label style={{display:"block",fontSize:"12px",fontWeight:"600",marginBottom:"5px",color:"#374151"}}>Deadline *</label>
-                        <input type="date" value={form.dueDate} onChange={e=>setForm({...form,dueDate:e.target.value})} required style={inputStyle}/>
-                      </div>
-                      <div>
-                        <label style={{display:"block",fontSize:"12px",fontWeight:"600",marginBottom:"5px",color:"#374151"}}>Di-request Oleh *</label>
-                        <select value={form.requestedBy} onChange={e=>setForm({...form,requestedBy:e.target.value})} style={inputStyle}>
-                          {REQUESTER_LIST.map(r=><option key={r}>{r}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label style={{display:"block",fontSize:"12px",fontWeight:"600",marginBottom:"5px",color:"#374151"}}>Assign PIC</label>
-                        <select value={form.pic} onChange={e=>setForm({...form,pic:e.target.value==="Belum assign"?"":e.target.value})} style={inputStyle}>
-                          <option value="">Belum assign</option>
-                          {DESIGNERS.map(d=><option key={d}>{d}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                    <div>
-                      <label style={{display:"block",fontSize:"12px",fontWeight:"600",marginBottom:"5px",color:"#374151"}}>Deskripsi / Brief</label>
-                      <textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="Jelaskan kebutuhan desain, ukuran, tone, referensi, dll..." style={{...inputStyle,minHeight:"75px",resize:"vertical"}}/>
-                    </div>
-
-                    {/* Attachment di form */}
-                    <div>
-                      <label style={{display:"block",fontSize:"12px",fontWeight:"600",marginBottom:"5px",color:"#374151"}}>
-                        Attachment Referensi
-                        <span style={{fontWeight:"400",color:"#9ca3af",marginLeft:"6px"}}>— gambar, PDF, brief, dll</span>
-                      </label>
-                      <div style={{border:`2px dashed ${G[200]}`,borderRadius:"12px",padding:"14px",background:G[50],cursor:"pointer"}} onClick={()=>formFileRef.current?.click()}>
-                        {(form.attachments||[]).length===0 ? (
-                          <div style={{textAlign:"center"}}>
-                            <i className="ti ti-upload" style={{fontSize:"22px",color:G[300],display:"block",marginBottom:"4px"}}/>
-                            <p style={{margin:0,fontSize:"12px",color:G[500]}}>Klik untuk upload gambar, PDF, atau Excel</p>
-                          </div>
-                        ) : (
-                          <div>
-                            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:"7px",marginBottom:"8px"}}>
-                              {form.attachments.map(att=>(
-                                <div key={att.id} style={{background:"#fff",borderRadius:"10px",padding:"8px",position:"relative",border:"1px solid #e5e7eb"}}>
-                                  <button type="button" onClick={e=>{e.stopPropagation();removeFormAtt(att.id);}} style={{position:"absolute",top:"4px",right:"4px",background:"rgba(239,68,68,0.1)",border:"none",cursor:"pointer",width:"17px",height:"17px",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",color:"#ef4444",padding:0}}><i className="ti ti-x" style={{fontSize:"10px"}}/></button>
-                                  {att.type==="image"&&att.dataUrl?<img src={att.dataUrl} alt={att.name} style={{width:"100%",height:"55px",objectFit:"cover",borderRadius:"7px",display:"block",marginBottom:"4px"}}/>:<div style={{width:"100%",height:"42px",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:"4px"}}><i className={`ti ${att.type==="pdf"?"ti-file-type-pdf":att.type==="excel"?"ti-file-spreadsheet":"ti-file"}`} style={{fontSize:"22px",color:"#6b7280"}}/></div>}
-                                  <p style={{margin:0,fontSize:"10px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"#374151",paddingRight:"12px"}}>{att.name}</p>
-                                  <p style={{margin:0,fontSize:"10px",color:"#9ca3af"}}>{att.size}</p>
-                                </div>
-                              ))}
-                            </div>
-                            <p style={{margin:0,fontSize:"11px",color:G[600],textAlign:"center"}}>+ Klik untuk tambah file lagi</p>
-                          </div>
-                        )}
-                      </div>
-                      <input ref={formFileRef} type="file" multiple accept="image/*,.pdf,.xlsx,.xls,.csv" style={{display:"none"}} onChange={handleFormFiles}/>
-                    </div>
-                  </div>
-
-                  <div style={{display:"flex",gap:"8px"}}>
-                    <button type="submit" style={{flex:1,padding:"10px",background:`linear-gradient(135deg,${G[800]},${G[500]})`,color:"#fff",border:"none",borderRadius:"12px",cursor:"pointer",fontSize:"13px",fontWeight:"600",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"}}>
-                      <i className="ti ti-check" style={{fontSize:"14px"}}/>Kirim Request
-                    </button>
-                    <button type="button" onClick={()=>{setShowManualForm(false);setShowRequestModal(false);}} style={{padding:"10px 16px",background:"#f3f4f6",color:"#374151",border:"none",borderRadius:"12px",cursor:"pointer",fontSize:"13px"}}>Batal</button>
-                  </div>
-                </form>
-              )}
+        {/* Share link info */}
+        <div style={{background:`linear-gradient(135deg,${G[50]},#fff)`,border:`1px solid ${G[200]}`,borderRadius:"14px",padding:"12px 16px",marginBottom:"14px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:"10px",flexWrap:"wrap"}}>
+          <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
+            <div style={{width:"34px",height:"34px",borderRadius:"10px",background:G[500],display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><i className="ti ti-link" style={{fontSize:"16px",color:"#fff"}}/></div>
+            <div>
+              <p style={{margin:0,fontSize:"13px",fontWeight:"600",color:G[800]}}>Link Request untuk Tim</p>
+              <p style={{margin:0,fontSize:"11px",color:G[600]}}>{window.location.origin}/#/request</p>
             </div>
           </div>
-        )}
-
-        {/* Email Log */}
-        {showLog&&(
-          <div style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:"16px",padding:"14px",marginBottom:"14px"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"10px"}}>
-              <h3 style={{margin:0,fontSize:"14px",fontWeight:"600",color:"#111827"}}>Log Notifikasi Email</h3>
-              <button onClick={()=>setShowLog(false)} style={{background:"#f3f4f6",border:"none",cursor:"pointer",width:"26px",height:"26px",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center"}}><i className="ti ti-x" style={{fontSize:"13px"}}/></button>
-            </div>
-            {emailLog.length===0?<p style={{margin:0,fontSize:"13px",color:"#9ca3af",textAlign:"center",padding:"16px"}}>Belum ada notifikasi.</p>
-            :emailLog.map(e=>(
-              <div key={e.id} style={{display:"flex",gap:"8px",alignItems:"start",padding:"8px 0",borderBottom:"1px solid #f9fafb"}}>
-                <div style={{width:"28px",height:"28px",borderRadius:"8px",background:G[50],display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><i className="ti ti-send" style={{fontSize:"13px",color:G[500]}}/></div>
-                <div style={{flex:1}}><p style={{margin:"0 0 2px 0",fontSize:"12px",color:"#374151"}}>{e.msg}</p><span style={{fontSize:"11px",color:"#9ca3af"}}>{e.time}</span></div>
-                <span style={{fontSize:"10px",background:G[50],color:G[700],padding:"2px 7px",borderRadius:"20px",border:`1px solid ${G[100]}`}}>Terkirim</span>
-              </div>
-            ))}
-          </div>
-        )}
+          <button onClick={copyRequestLink} style={{fontSize:"12px",padding:"6px 14px",background:linkCopied?G[500]:"#fff",color:linkCopied?"#fff":G[700],border:`1px solid ${G[200]}`,borderRadius:"20px",cursor:"pointer",fontWeight:"600",display:"flex",alignItems:"center",gap:"5px",flexShrink:0}}>
+            <i className={`ti ${linkCopied?"ti-check":"ti-copy"}`} style={{fontSize:"13px"}}/>
+            {linkCopied?"Copied!":"Copy Link"}
+          </button>
+        </div>
 
         {/* Reminders */}
         {reminders.length>0&&(
@@ -415,7 +442,7 @@ export default function App() {
           ))}
         </div>
 
-        {/* ── FILTER BAR ── */}
+        {/* Filters */}
         {view!=="analytics"&&(
           <div style={{background:"#f9fafb",borderRadius:"12px",padding:"12px 14px",marginBottom:"14px",border:"1px solid #e5e7eb"}}>
             <div style={{display:"flex",gap:"8px",flexWrap:"wrap",alignItems:"center",marginBottom:filterMode==="custom"?"10px":"0"}}>
@@ -431,8 +458,8 @@ export default function App() {
               <select value={filterMode} onChange={e=>setFilterMode(e.target.value)} style={{fontSize:"12px",padding:"5px 10px",borderRadius:"20px",border:`1px solid ${filterMode!=="all"?G[300]:"#e5e7eb"}`,background:filterMode!=="all"?G[50]:"#fff",cursor:"pointer"}}>
                 <option value="all">Semua Tanggal</option>
                 <option value="today">Hari Ini</option>
-                <option value="week">Minggu Ini (7 hari ke depan)</option>
-                <option value="month">Bulan Ini (30 hari ke depan)</option>
+                <option value="week">Minggu Ini</option>
+                <option value="month">Bulan Ini</option>
                 <option value="overdue">Overdue</option>
                 <option value="custom">Custom Range...</option>
               </select>
@@ -444,21 +471,17 @@ export default function App() {
             </div>
             {filterMode==="custom"&&(
               <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap",paddingTop:"10px",borderTop:"1px solid #e5e7eb"}}>
-                <span style={{fontSize:"12px",color:"#6b7280",fontWeight:"500"}}>Dari:</span>
+                <span style={{fontSize:"12px",color:"#6b7280"}}>Dari:</span>
                 <input type="date" value={customFrom} onChange={e=>setCustomFrom(e.target.value)} style={{fontSize:"12px",padding:"5px 10px",borderRadius:"10px",border:"1px solid #e5e7eb",background:"#fff"}}/>
-                <span style={{fontSize:"12px",color:"#6b7280",fontWeight:"500"}}>Sampai:</span>
+                <span style={{fontSize:"12px",color:"#6b7280"}}>Sampai:</span>
                 <input type="date" value={customTo} onChange={e=>setCustomTo(e.target.value)} style={{fontSize:"12px",padding:"5px 10px",borderRadius:"10px",border:"1px solid #e5e7eb",background:"#fff"}}/>
-                {customFrom&&customTo&&(
-                  <span style={{fontSize:"11px",background:G[50],color:G[700],padding:"3px 9px",borderRadius:"20px",border:`1px solid ${G[100]}`,fontWeight:"600"}}>
-                    {filtered.length} task ditemukan
-                  </span>
-                )}
+                {customFrom&&customTo&&<span style={{fontSize:"11px",background:G[50],color:G[700],padding:"3px 9px",borderRadius:"20px",border:`1px solid ${G[100]}`,fontWeight:"600"}}>{filtered.length} task</span>}
               </div>
             )}
           </div>
         )}
 
-        {/* ── KANBAN ── */}
+        {/* Kanban */}
         {view==="kanban"&&(
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:"12px"}}>
             {cols.map(col=>(
@@ -479,7 +502,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ── LIST ── */}
+        {/* List */}
         {view==="list"&&(
           <div style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:"16px",overflow:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:"12px",tableLayout:"fixed"}}>
@@ -508,7 +531,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ── ANALYTICS ── */}
+        {/* Analytics */}
         {view==="analytics"&&(
           <div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:"10px",marginBottom:"14px"}}>
@@ -562,7 +585,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ── DETAIL PANEL ── */}
+        {/* Detail Panel */}
         {selected&&(
           <div style={{marginTop:"18px",background:"#fff",border:`2px solid ${G[100]}`,borderRadius:"20px",padding:"20px"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"start",marginBottom:"14px"}}>
@@ -596,7 +619,6 @@ export default function App() {
                 </div>
               </div>
             )}
-            {/* Attachments detail */}
             <div style={{marginBottom:"14px"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"8px"}}>
                 <p style={{margin:0,fontSize:"13px",fontWeight:"600",color:"#111827",display:"flex",alignItems:"center",gap:"5px"}}>
@@ -612,7 +634,7 @@ export default function App() {
                   {selected.attachments.map(att=>(
                     <div key={att.id} style={{background:"#f9fafb",border:"1px solid #e5e7eb",borderRadius:"12px",padding:"9px",position:"relative"}}>
                       <button onClick={()=>removeAtt(att.id)} style={{position:"absolute",top:"5px",right:"5px",background:"rgba(239,68,68,0.1)",border:"none",cursor:"pointer",width:"18px",height:"18px",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",color:"#ef4444",padding:0}}><i className="ti ti-x" style={{fontSize:"11px"}}/></button>
-                      {att.type==="image"&&att.dataUrl?<img src={att.dataUrl} alt={att.name} style={{width:"100%",height:"60px",objectFit:"cover",borderRadius:"7px",marginBottom:"5px",display:"block"}}/>:<div style={{width:"100%",height:"50px",background:"#fff",borderRadius:"7px",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:"5px"}}><FileIcon type={att.type}/></div>}
+                      {att.type==="image"&&att.dataUrl?<img src={att.dataUrl} alt={att.name} style={{width:"100%",height:"60px",objectFit:"cover",borderRadius:"7px",marginBottom:"5px",display:"block"}}/>:<div style={{width:"100%",height:"50px",background:"#fff",borderRadius:"7px",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:"5px"}}><i className={`ti ${att.type==="pdf"?"ti-file-type-pdf":"ti-file-spreadsheet"}`} style={{fontSize:"22px",color:"#6b7280"}}/></div>}
                       <p style={{margin:"0 0 1px 0",fontSize:"10px",fontWeight:"500",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:"12px",color:"#374151"}}>{att.name}</p>
                       <p style={{margin:0,fontSize:"10px",color:"#9ca3af"}}>{att.size}</p>
                     </div>
@@ -620,7 +642,6 @@ export default function App() {
                 </div>
               }
             </div>
-            {/* Comments */}
             <div>
               <p style={{margin:"0 0 10px 0",fontSize:"13px",fontWeight:"600",color:"#111827",display:"flex",alignItems:"center",gap:"5px"}}>
                 <i className="ti ti-message" style={{fontSize:"14px",color:G[500],verticalAlign:"-2px"}}/>Komentar
@@ -639,7 +660,7 @@ export default function App() {
                 <select value={commentBy} onChange={e=>setCommentBy(e.target.value)} style={{width:"95px",flexShrink:0,fontSize:"12px",borderRadius:"20px",padding:"7px 9px",border:"1px solid #e5e7eb"}}>
                   {DESIGNERS.map(d=><option key={d}>{d}</option>)}
                 </select>
-                <textarea value={newComment} onChange={e=>setNewComment(e.target.value)} placeholder="Tulis komentar... (Ctrl+Enter untuk kirim)" style={{flex:1,minHeight:"56px",fontSize:"12px",boxSizing:"border-box",borderRadius:"12px",resize:"vertical",padding:"8px 10px",border:"1px solid #e5e7eb"}} onKeyDown={e=>{if(e.key==="Enter"&&e.ctrlKey)addComment();}}/>
+                <textarea value={newComment} onChange={e=>setNewComment(e.target.value)} placeholder="Tulis komentar... (Ctrl+Enter)" style={{flex:1,minHeight:"56px",fontSize:"12px",boxSizing:"border-box",borderRadius:"12px",resize:"vertical",padding:"8px 10px",border:"1px solid #e5e7eb"}} onKeyDown={e=>{if(e.key==="Enter"&&e.ctrlKey)addComment();}}/>
                 <button onClick={addComment} style={{padding:"9px 14px",background:`linear-gradient(135deg,${G[800]},${G[500]})`,color:"#fff",border:"none",borderRadius:"12px",cursor:"pointer",flexShrink:0}}>
                   <i className="ti ti-send" style={{fontSize:"15px"}}/>
                 </button>
@@ -650,4 +671,22 @@ export default function App() {
       </div>
     </div>
   );
+}
+
+// ─── ROUTER ────────────────────────────────────────────────────
+export default function App() {
+  const [page, setPage] = useState(() => {
+    return window.location.hash === "#/request" ? "request" : "board";
+  });
+
+  useEffect(() => {
+    const handleHash = () => {
+      setPage(window.location.hash === "#/request" ? "request" : "board");
+    };
+    window.addEventListener("hashchange", handleHash);
+    return () => window.removeEventListener("hashchange", handleHash);
+  }, []);
+
+  if (page === "request") return <RequestPage />;
+  return <BoardApp />;
 }
