@@ -224,6 +224,14 @@ function BoardApp() {
 
   useEffect(()=>{saveTasks(tasks);},[tasks]);
   useEffect(()=>{
+    // Patch tasks lama yang belum punya field attachmentLinks & checklists
+    setTasks(prev=>prev.map(t=>({
+      ...t,
+      attachmentLinks: t.attachmentLinks||[],
+      checklists: t.checklists||[],
+    })));
+  },[]);
+  useEffect(()=>{
     const interval=setInterval(()=>{const s=loadTasks();if(s.length!==tasks.length)setTasks(s);},5000);
     return()=>clearInterval(interval);
   },[tasks.length]);
@@ -628,15 +636,22 @@ function BoardApp() {
                 </div>
               </div>
               <div style={{display:"flex",gap:"6px",flexShrink:0}}>
-                {/* FIX #2: Tombol Edit */}
+                {/* Tombol Edit - hijau */}
                 {!editMode&&(
-                  <button onClick={startEdit} style={{background:G[50],border:`1px solid ${G[200]}`,cursor:"pointer",width:"32px",height:"32px",borderRadius:"8px",display:"flex",alignItems:"center",justifyContent:"center",color:G[600]}}><i className="ti ti-edit" style={{fontSize:"14px"}}/></button>
+                  <button onClick={startEdit} title="Edit task" style={{background:G[500],border:"none",cursor:"pointer",width:"32px",height:"32px",borderRadius:"8px",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",boxShadow:`0 2px 6px ${G[300]}`}}>
+                    <i className="ti ti-pencil" style={{fontSize:"15px"}}/>
+                  </button>
                 )}
-                {/* FIX #9: Tombol Hapus */}
+                {/* Tombol Hapus - merah */}
                 {!editMode&&(
-                  <button onClick={()=>setConfirmDelete(selected.id)} style={{background:"#fff0f0",border:"1px solid #fecaca",cursor:"pointer",width:"32px",height:"32px",borderRadius:"8px",display:"flex",alignItems:"center",justifyContent:"center",color:"#ef4444"}}><i className="ti ti-trash" style={{fontSize:"14px"}}/></button>
+                  <button onClick={()=>setConfirmDelete(selected.id)} title="Hapus task" style={{background:"#ef4444",border:"none",cursor:"pointer",width:"32px",height:"32px",borderRadius:"8px",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",boxShadow:"0 2px 6px #fca5a5"}}>
+                    <i className="ti ti-trash" style={{fontSize:"15px"}}/>
+                  </button>
                 )}
-                <button onClick={()=>{setSelected(null);setEditMode(false);setConfirmDelete(null);}} style={{background:"#f3f4f6",border:"none",cursor:"pointer",width:"32px",height:"32px",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center"}}><i className="ti ti-x" style={{fontSize:"14px"}}/></button>
+                {/* Tombol Close - abu-abu */}
+                <button onClick={()=>{setSelected(null);setEditMode(false);setConfirmDelete(null);}} title="Tutup" style={{background:"#9ca3af",border:"none",cursor:"pointer",width:"32px",height:"32px",borderRadius:"8px",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff"}}>
+                  <i className="ti ti-x" style={{fontSize:"15px"}}/>
+                </button>
               </div>
             </div>
 
