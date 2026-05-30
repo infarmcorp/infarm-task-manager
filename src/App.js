@@ -222,19 +222,34 @@ function BoardApp() {
   const [lightbox,setLightbox]=useState(null); // FIX #6: image preview
   const detailFileRef=useRef(null);
 
-  useEffect(()=>{saveTasks(tasks);},[tasks]);
+  // Simpan ke localStorage hanya kalau tasks berubah (bukan saat mount)
+  const isFirstRender=useRef(true);
   useEffect(()=>{
-    // Patch tasks lama yang belum punya field attachmentLinks & checklists
+    if(isFirstRender.current){isFirstRender.current=false;return;}
+    saveTasks(tasks);
+  },[tasks]);
+
+  // Patch tasks lama + auto-refresh dari localStorage setiap 3 detik
+  useEffect(()=>{
+    // Patch data lama yang belum punya field baru
     setTasks(prev=>prev.map(t=>({
       ...t,
-      attachmentLinks: t.attachmentLinks||[],
-      checklists: t.checklists||[],
+      attachmentLinks: Array.isArray(t.attachmentLinks)?t.attachmentLinks:[],
+      checklists: Array.isArray(t.checklists)?t.checklists:[],
     })));
-  },[]);
-  useEffect(()=>{
-    const interval=setInterval(()=>{const s=loadTasks();if(s.length!==tasks.length)setTasks(s);},5000);
+    // Auto-refresh: cek localStorage setiap 3 detik, sync kalau ada perubahan
+    const interval=setInterval(()=>{
+      try{
+        const stored=loadTasks();
+        const storedStr=JSON.stringify(stored);
+        setTasks(prev=>{
+          if(JSON.stringify(prev)===storedStr)return prev;
+          return stored.map(t=>({...t,attachmentLinks:Array.isArray(t.attachmentLinks)?t.attachmentLinks:[],checklists:Array.isArray(t.checklists)?t.checklists:[]}));
+        });
+      }catch(e){}
+    },3000);
     return()=>clearInterval(interval);
-  },[tasks.length]);
+  },[]);
 
   const today=new Date();today.setHours(0,0,0,0);
   const fmtDate=d=>d?new Date(d).toLocaleDateString("id-ID",{day:"numeric",month:"short",year:"numeric"}):"-";
@@ -264,10 +279,17 @@ function BoardApp() {
     return{total,done,over,rate:total>0?Math.round(done/total*100):0,byPIC};
   },[tasks]);
 
-  const moveTask=(id,ns)=>{setTasks(prev=>prev.map(t=>t.id!==id?t:{...t,status:ns}));if(selected?.id===id)setSelected(prev=>({...prev,status:ns}));};
+  const moveTask=(id,ns)=>{
+    setTasks(prev=>{const u=prev.map(t=>t.id!==id?t:{...t,status:ns});saveTasks(u);return u;});
+    if(selected?.id===id)setSelected(prev=>({...prev,status:ns}));
+  };
 
   // FIX #9: Delete dengan konfirmasi
-  const deleteTask=id=>{setTasks(prev=>prev.filter(t=>t.id!==id));if(selected?.id===id)setSelected(null);setConfirmDelete(null);};
+  const deleteTask=id=>{
+    setTasks(prev=>{const u=prev.filter(t=>t.id!==id);saveTasks(u);return u;});
+    if(selected?.id===id)setSelected(null);
+    setConfirmDelete(null);
+  };
 
   const copyRequestLink=()=>{navigator.clipboard?.writeText(window.location.origin+"/#/request").catch(()=>{});setLinkCopied(true);setTimeout(()=>setLinkCopied(false),2000);};
 
