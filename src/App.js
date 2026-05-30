@@ -27,10 +27,9 @@ const DEMO=[
 
 // ─── REQUEST FORM PAGE ─────────────────────────────────────────
 function RequestPage() {
-  const [form,setForm]=useState({title:"",requesterName:"",category:"Social Media Post",requestedBy:"Sales Team",description:"",dueDate:"",attachments:[],attachmentLinks:[]});
+  const [form,setForm]=useState({title:"",requesterName:"",category:"Social Media Post",requestedBy:"Sales Team",description:"",dueDate:"",attachments:[]});
   const [submitted,setSubmitted]=useState(false);
   const [loading,setLoading]=useState(false);
-  const [newLink,setNewLink]=useState("");
   const fileRef=useRef(null);
 
   // FIX #4: Promise.all + FileReader biar foto bisa muncul
@@ -46,19 +45,11 @@ function RequestPage() {
 
   const removeAtt=id=>setForm(prev=>({...prev,attachments:prev.attachments.filter(a=>a.id!==id)}));
 
-  // FIX #5: Tambah link URL
-  const addLink=()=>{
-    if(!newLink.trim())return;
-    setForm(prev=>({...prev,attachmentLinks:[...(prev.attachmentLinks||[]),{id:Date.now(),url:newLink.trim()}]}));
-    setNewLink("");
-  };
-  const removeLink=id=>setForm(prev=>({...prev,attachmentLinks:prev.attachmentLinks.filter(l=>l.id!==id)}));
-
   const handleSubmit=e=>{
     e.preventDefault();setLoading(true);
     setTimeout(()=>{
       const tasks=loadTasks();
-      const newTask={id:Date.now(),title:form.title,requesterName:form.requesterName,category:form.category,requestedBy:form.requestedBy,description:form.description,dueDate:form.dueDate,attachments:form.attachments||[],attachmentLinks:form.attachmentLinks||[],status:"request",pic:null,checklists:[],createdDate:new Date().toISOString().split("T")[0]};
+      const newTask={id:Date.now(),title:form.title,requesterName:form.requesterName,category:form.category,requestedBy:form.requestedBy,description:form.description,dueDate:form.dueDate,attachments:form.attachments||[],attachmentLinks:[],resultLinks:[],status:"request",pic:null,checklists:[],createdDate:new Date().toISOString().split("T")[0]};
       saveTasks([...tasks,newTask]);setLoading(false);setSubmitted(true);
     },800);
   };
@@ -75,7 +66,7 @@ function RequestPage() {
           <p style={{margin:0,fontSize:"13px",color:G[700],fontWeight:"600"}}>📋 {form.title}</p>
           <p style={{margin:"4px 0 0 0",fontSize:"12px",color:G[600]}}>{form.category} · {form.requestedBy} · {form.requesterName}</p>
         </div>
-        <button onClick={()=>{setSubmitted(false);setForm({title:"",requesterName:"",category:"Social Media Post",requestedBy:"Sales Team",description:"",dueDate:"",attachments:[],attachmentLinks:[]});}} style={{width:"100%",padding:"12px",background:`linear-gradient(135deg,${G[800]},${G[500]})`,color:"#fff",border:"none",borderRadius:"12px",cursor:"pointer",fontSize:"14px",fontWeight:"600"}}>
+        <button onClick={()=>{setSubmitted(false);setForm({title:"",requesterName:"",category:"Social Media Post",requestedBy:"Sales Team",description:"",dueDate:"",attachments:[]});}} style={{width:"100%",padding:"12px",background:`linear-gradient(135deg,${G[800]},${G[500]})`,color:"#fff",border:"none",borderRadius:"12px",cursor:"pointer",fontSize:"14px",fontWeight:"600"}}>
           + Request Desain Lagi
         </button>
       </div>
@@ -164,25 +155,6 @@ function RequestPage() {
                 )}
               </div>
               <input ref={fileRef} type="file" multiple accept="image/*,.pdf,.xlsx,.xls,.csv" style={{display:"none"}} onChange={handleFiles}/>
-
-              {/* FIX #5: Input link URL */}
-              <div style={{marginBottom:"6px"}}>
-                <div style={{display:"flex",gap:"6px"}}>
-                  <input type="text" value={newLink} onChange={e=>setNewLink(e.target.value)} placeholder="Link Referensi (Google Drive, Figma, dll...)" style={{flex:1,borderRadius:"10px",border:"1px solid #e5e7eb",padding:"8px 12px",fontSize:"12px"}} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addLink();}}}/>
-                  <button type="button" onClick={addLink} style={{padding:"8px 14px",background:G[500],color:"#fff",border:"none",borderRadius:"10px",cursor:"pointer",fontSize:"12px",fontWeight:"600",flexShrink:0}}>+ Link</button>
-                </div>
-              </div>
-              {(form.attachmentLinks||[]).length>0&&(
-                <div style={{display:"flex",flexDirection:"column",gap:"5px"}}>
-                  {form.attachmentLinks.map(l=>(
-                    <div key={l.id} style={{display:"flex",alignItems:"center",gap:"6px",background:"#eff6ff",borderRadius:"8px",padding:"6px 10px",border:"1px solid #bfdbfe"}}>
-                      <i className="ti ti-link" style={{fontSize:"13px",color:"#2563eb",flexShrink:0}}/>
-                      <span style={{flex:1,fontSize:"11px",color:"#1e40af",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.url}</span>
-                      <button type="button" onClick={()=>removeLink(l.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#ef4444",padding:0,flexShrink:0}}><i className="ti ti-x" style={{fontSize:"12px"}}/></button>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
 
             <button type="submit" disabled={loading} style={{width:"100%",padding:"12px",background:loading?"#9ca3af":`linear-gradient(135deg,${G[800]},${G[500]})`,color:"#fff",border:"none",borderRadius:"12px",cursor:loading?"not-allowed":"pointer",fontSize:"14px",fontWeight:"600",display:"flex",alignItems:"center",justifyContent:"center",gap:"8px"}}>
@@ -191,6 +163,63 @@ function RequestPage() {
           </form>
         </div>
         <p style={{textAlign:"center",marginTop:"16px",fontSize:"12px",color:"rgba(255,255,255,0.5)"}}>INFARM.ID © 2025 · Tim Desain Internal</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── RESULT LINK INPUT COMPONENT ──────────────────────────────
+function ResultLinkInput({selected,setSelected,tasks,setTasks}){
+  const [newLink,setNewLink]=useState("");
+  const addResultLink=()=>{
+    if(!newLink.trim())return;
+    const link={id:Date.now(),url:newLink.trim()};
+    const u={...selected,resultLinks:[...(selected.resultLinks||[]),link]};
+    const updated=tasks.map(t=>t.id===u.id?u:t);
+    setTasks(updated);saveTasks(updated);setSelected(u);setNewLink("");
+  };
+  const removeResultLink=id=>{
+    const u={...selected,resultLinks:(selected.resultLinks||[]).filter(l=>l.id!==id)};
+    const updated=tasks.map(t=>t.id===u.id?u:t);
+    setTasks(updated);saveTasks(updated);setSelected(u);
+  };
+  return(
+    <div>
+      {(selected.resultLinks||[]).length===0?(
+        <div style={{border:`2px dashed ${G[200]}`,borderRadius:"12px",padding:"12px",textAlign:"center",background:G[50],marginBottom:"8px"}}>
+          <i className="ti ti-cloud-upload" style={{fontSize:"18px",color:G[300],display:"block",marginBottom:"4px"}}/>
+          <p style={{margin:0,fontSize:"12px",color:G[500]}}>Belum ada link hasil desain</p>
+        </div>
+      ):(
+        <div style={{display:"flex",flexDirection:"column",gap:"6px",marginBottom:"8px"}}>
+          {selected.resultLinks.map((l,i)=>(
+            <div key={l.id||i} style={{display:"flex",alignItems:"center",gap:"8px",background:G[50],borderRadius:"10px",padding:"10px 12px",border:`1px solid ${G[200]}`}}>
+              <div style={{width:"28px",height:"28px",borderRadius:"8px",background:G[500],display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                <i className="ti ti-cloud" style={{fontSize:"13px",color:"#fff"}}/>
+              </div>
+              <a href={l.url} target="_blank" rel="noopener noreferrer" style={{flex:1,fontSize:"12px",color:G[700],overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:"500",textDecoration:"none"}}>
+                {l.url}
+              </a>
+              <a href={l.url} target="_blank" rel="noopener noreferrer" style={{color:G[500],flexShrink:0}}>
+                <i className="ti ti-external-link" style={{fontSize:"14px"}}/>
+              </a>
+              <button onClick={()=>removeResultLink(l.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#d1d5db",padding:0,flexShrink:0}}>
+                <i className="ti ti-x" style={{fontSize:"13px"}}/>
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{display:"flex",gap:"6px"}}>
+        <input
+          value={newLink} onChange={e=>setNewLink(e.target.value)}
+          placeholder="Paste link Google Drive hasil desain..."
+          style={{flex:1,borderRadius:"10px",border:`1px solid ${G[200]}`,padding:"8px 12px",fontSize:"12px",background:"#fff"}}
+          onKeyDown={e=>{if(e.key==="Enter")addResultLink();}}
+        />
+        <button onClick={addResultLink} style={{padding:"8px 14px",background:G[500],color:"#fff",border:"none",borderRadius:"10px",cursor:"pointer",fontSize:"12px",fontWeight:"600",flexShrink:0,display:"flex",alignItems:"center",gap:"4px"}}>
+          <i className="ti ti-plus" style={{fontSize:"13px"}}/>Tambah
+        </button>
       </div>
     </div>
   );
@@ -235,6 +264,7 @@ function BoardApp() {
     setTasks(prev=>prev.map(t=>({
       ...t,
       attachmentLinks: Array.isArray(t.attachmentLinks)?t.attachmentLinks:[],
+      resultLinks: Array.isArray(t.resultLinks)?t.resultLinks:[],
       checklists: Array.isArray(t.checklists)?t.checklists:[],
     })));
     // Auto-refresh: cek localStorage setiap 3 detik, sync kalau ada perubahan
@@ -244,7 +274,7 @@ function BoardApp() {
         const storedStr=JSON.stringify(stored);
         setTasks(prev=>{
           if(JSON.stringify(prev)===storedStr)return prev;
-          return stored.map(t=>({...t,attachmentLinks:Array.isArray(t.attachmentLinks)?t.attachmentLinks:[],checklists:Array.isArray(t.checklists)?t.checklists:[]}));
+          return stored.map(t=>({...t,attachmentLinks:Array.isArray(t.attachmentLinks)?t.attachmentLinks:[],resultLinks:Array.isArray(t.resultLinks)?t.resultLinks:[],checklists:Array.isArray(t.checklists)?t.checklists:[]}));
         });
       }catch(e){}
     },3000);
@@ -824,33 +854,16 @@ function BoardApp() {
               }
             </div>
 
-            {/* ── LINK REFERENSI (selalu tampil, terpisah dari file) ── */}
+            {/* ── LINK HASIL DESAIN (khusus tim desain input setelah selesai) ── */}
             <div style={{marginBottom:"14px"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"8px"}}>
                 <p style={{margin:0,fontSize:"13px",fontWeight:"600",color:"#111827",display:"flex",alignItems:"center",gap:"5px"}}>
-                  <i className="ti ti-link" style={{fontSize:"14px",color:"#2563eb"}}/>Link Referensi
-                  <span style={{background:"#dbeafe",color:"#1e40af",fontSize:"10px",padding:"1px 6px",borderRadius:"20px",marginLeft:"2px"}}>{(selected.attachmentLinks||[]).length}</span>
+                  <i className="ti ti-cloud-upload" style={{fontSize:"14px",color:G[500]}}/>Link Hasil Desain
+                  <span style={{background:G[100],color:G[700],fontSize:"10px",padding:"1px 6px",borderRadius:"20px",marginLeft:"2px"}}>{(selected.resultLinks||[]).length}</span>
                 </p>
               </div>
-              {(selected.attachmentLinks||[]).length===0
-                ?<div style={{border:"2px dashed #bfdbfe",borderRadius:"12px",padding:"14px",textAlign:"center",background:"#eff6ff"}}>
-                  <i className="ti ti-link" style={{fontSize:"18px",color:"#93c5fd",display:"block",marginBottom:"4px"}}/>
-                  <p style={{margin:0,fontSize:"12px",color:"#3b82f6"}}>Belum ada link referensi dari requester</p>
-                </div>
-                :<div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
-                  {selected.attachmentLinks.map((l,i)=>(
-                    <a key={l.id||i} href={l.url} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",gap:"8px",background:"#eff6ff",borderRadius:"10px",padding:"10px 12px",border:"1px solid #bfdbfe",textDecoration:"none",transition:"background .15s"}}
-                      onMouseEnter={e=>e.currentTarget.style.background="#dbeafe"}
-                      onMouseLeave={e=>e.currentTarget.style.background="#eff6ff"}>
-                      <div style={{width:"28px",height:"28px",borderRadius:"8px",background:"#2563eb",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                        <i className="ti ti-link" style={{fontSize:"13px",color:"#fff"}}/>
-                      </div>
-                      <span style={{flex:1,fontSize:"12px",color:"#1e40af",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:"500"}}>{l.url}</span>
-                      <i className="ti ti-external-link" style={{fontSize:"14px",color:"#60a5fa",flexShrink:0}}/>
-                    </a>
-                  ))}
-                </div>
-              }
+              {/* Input tambah link hasil */}
+              <ResultLinkInput selected={selected} setSelected={setSelected} tasks={tasks} setTasks={setTasks}/>
             </div>
           </div>
         )}
