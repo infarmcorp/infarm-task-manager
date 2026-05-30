@@ -769,28 +769,23 @@ function BoardApp() {
 
             {/* Attachments */}
             <div style={{marginBottom:"14px"}}>
+            {/* ── FILE ATTACHMENT ── */}
+            <div style={{marginBottom:"12px"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"8px"}}>
                 <p style={{margin:0,fontSize:"13px",fontWeight:"600",color:"#111827",display:"flex",alignItems:"center",gap:"5px"}}>
-                  <i className="ti ti-paperclip" style={{fontSize:"14px",color:G[500]}}/>Attachment
-                  <span style={{background:G[100],color:G[700],fontSize:"10px",padding:"1px 6px",borderRadius:"20px",marginLeft:"2px"}}>{(selected.attachments||[]).length+(selected.attachmentLinks||[]).length}</span>
+                  <i className="ti ti-photo" style={{fontSize:"14px",color:G[500]}}/>File Attachment
+                  <span style={{background:G[100],color:G[700],fontSize:"10px",padding:"1px 6px",borderRadius:"20px",marginLeft:"2px"}}>{(selected.attachments||[]).length}</span>
                 </p>
-                <button onClick={()=>detailFileRef.current?.click()} style={{fontSize:"11px",padding:"4px 11px",background:G[50],color:G[700],border:`1px solid ${G[200]}`,borderRadius:"20px",cursor:"pointer",display:"flex",alignItems:"center",gap:"4px"}}><i className="ti ti-upload" style={{fontSize:"12px"}}/>Upload</button>
+                <button onClick={()=>detailFileRef.current?.click()} style={{fontSize:"11px",padding:"4px 11px",background:G[50],color:G[700],border:`1px solid ${G[200]}`,borderRadius:"20px",cursor:"pointer",display:"flex",alignItems:"center",gap:"4px"}}>
+                  <i className="ti ti-upload" style={{fontSize:"12px"}}/>Upload
+                </button>
                 <input ref={detailFileRef} type="file" multiple accept="image/*,.pdf,.xlsx,.xls,.csv" style={{display:"none"}} onChange={handleDetailFiles}/>
               </div>
-              {/* Show links dari form */}
-              {(selected.attachmentLinks||[]).length>0&&(
-                <div style={{display:"flex",flexDirection:"column",gap:"5px",marginBottom:"8px"}}>
-                  {selected.attachmentLinks.map(l=>(
-                    <a key={l.id} href={l.url} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",gap:"6px",background:"#eff6ff",borderRadius:"8px",padding:"6px 10px",border:"1px solid #bfdbfe",textDecoration:"none"}}>
-                      <i className="ti ti-link" style={{fontSize:"13px",color:"#2563eb",flexShrink:0}}/>
-                      <span style={{flex:1,fontSize:"11px",color:"#1e40af",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.url}</span>
-                      <i className="ti ti-external-link" style={{fontSize:"11px",color:"#93c5fd"}}/>
-                    </a>
-                  ))}
+              {(selected.attachments||[]).length===0
+                ?<div onClick={()=>detailFileRef.current?.click()} style={{border:`2px dashed ${G[200]}`,borderRadius:"12px",padding:"16px",textAlign:"center",cursor:"pointer",background:G[50]}}>
+                  <i className="ti ti-upload" style={{fontSize:"18px",color:G[300],display:"block",marginBottom:"4px"}}/>
+                  <p style={{margin:0,fontSize:"12px",color:G[500]}}>Klik untuk upload foto / PDF / Excel</p>
                 </div>
-              )}
-              {(selected.attachments||[]).length===0&&(selected.attachmentLinks||[]).length===0
-                ?<div onClick={()=>detailFileRef.current?.click()} style={{border:`2px dashed ${G[200]}`,borderRadius:"12px",padding:"20px",textAlign:"center",cursor:"pointer",background:G[50]}}><i className="ti ti-upload" style={{fontSize:"20px",color:G[300],display:"block",marginBottom:"4px"}}/><p style={{margin:0,fontSize:"12px",color:G[500]}}>Klik untuk upload</p></div>
                 :<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:"7px"}}>
                   {selected.attachments.map(att=>(
                     <div key={att.id} style={{background:"#f9fafb",border:"1px solid #e5e7eb",borderRadius:"12px",padding:"9px",position:"relative"}}>
@@ -802,6 +797,35 @@ function BoardApp() {
                       <p style={{margin:"0 0 1px 0",fontSize:"10px",fontWeight:"500",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:"12px",color:"#374151"}}>{att.name}</p>
                       <p style={{margin:0,fontSize:"10px",color:"#9ca3af"}}>{att.size}</p>
                     </div>
+                  ))}
+                </div>
+              }
+            </div>
+
+            {/* ── LINK REFERENSI (selalu tampil, terpisah dari file) ── */}
+            <div style={{marginBottom:"14px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"8px"}}>
+                <p style={{margin:0,fontSize:"13px",fontWeight:"600",color:"#111827",display:"flex",alignItems:"center",gap:"5px"}}>
+                  <i className="ti ti-link" style={{fontSize:"14px",color:"#2563eb"}}/>Link Referensi
+                  <span style={{background:"#dbeafe",color:"#1e40af",fontSize:"10px",padding:"1px 6px",borderRadius:"20px",marginLeft:"2px"}}>{(selected.attachmentLinks||[]).length}</span>
+                </p>
+              </div>
+              {(selected.attachmentLinks||[]).length===0
+                ?<div style={{border:"2px dashed #bfdbfe",borderRadius:"12px",padding:"14px",textAlign:"center",background:"#eff6ff"}}>
+                  <i className="ti ti-link" style={{fontSize:"18px",color:"#93c5fd",display:"block",marginBottom:"4px"}}/>
+                  <p style={{margin:0,fontSize:"12px",color:"#3b82f6"}}>Belum ada link referensi dari requester</p>
+                </div>
+                :<div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
+                  {selected.attachmentLinks.map((l,i)=>(
+                    <a key={l.id||i} href={l.url} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",gap:"8px",background:"#eff6ff",borderRadius:"10px",padding:"10px 12px",border:"1px solid #bfdbfe",textDecoration:"none",transition:"background .15s"}}
+                      onMouseEnter={e=>e.currentTarget.style.background="#dbeafe"}
+                      onMouseLeave={e=>e.currentTarget.style.background="#eff6ff"}>
+                      <div style={{width:"28px",height:"28px",borderRadius:"8px",background:"#2563eb",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                        <i className="ti ti-link" style={{fontSize:"13px",color:"#fff"}}/>
+                      </div>
+                      <span style={{flex:1,fontSize:"12px",color:"#1e40af",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:"500"}}>{l.url}</span>
+                      <i className="ti ti-external-link" style={{fontSize:"14px",color:"#60a5fa",flexShrink:0}}/>
+                    </a>
                   ))}
                 </div>
               }
