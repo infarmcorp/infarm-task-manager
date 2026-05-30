@@ -168,7 +168,7 @@ function RequestPage() {
               {/* FIX #5: Input link URL */}
               <div style={{marginBottom:"6px"}}>
                 <div style={{display:"flex",gap:"6px"}}>
-                  <input type="url" value={newLink} onChange={e=>setNewLink(e.target.value)} placeholder="Paste link Google Drive / Figma / dll..." style={{flex:1,borderRadius:"10px",border:"1px solid #e5e7eb",padding:"8px 12px",fontSize:"12px"}} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addLink();}}}/>
+                  <input type="text" value={newLink} onChange={e=>setNewLink(e.target.value)} placeholder="Link Referensi (Google Drive, Figma, dll...)" style={{flex:1,borderRadius:"10px",border:"1px solid #e5e7eb",padding:"8px 12px",fontSize:"12px"}} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addLink();}}}/>
                   <button type="button" onClick={addLink} style={{padding:"8px 14px",background:G[500],color:"#fff",border:"none",borderRadius:"10px",cursor:"pointer",fontSize:"12px",fontWeight:"600",flexShrink:0}}>+ Link</button>
                 </div>
               </div>
@@ -219,6 +219,7 @@ function BoardApp() {
   const [newCheckAssignee,setNewCheckAssignee]=useState("Denny");
   const [exportMsg,setExportMsg]=useState("");
   const [linkCopied,setLinkCopied]=useState(false);
+  const [lightbox,setLightbox]=useState(null); // FIX #6: image preview
   const detailFileRef=useRef(null);
 
   useEffect(()=>{saveTasks(tasks);},[tasks]);
@@ -263,7 +264,17 @@ function BoardApp() {
   const copyRequestLink=()=>{navigator.clipboard?.writeText(window.location.origin+"/#/request").catch(()=>{});setLinkCopied(true);setTimeout(()=>setLinkCopied(false),2000);};
 
   // FIX #2: Edit task
-  const startEdit=()=>{setEditForm({title:selected.title,category:selected.category,dueDate:selected.dueDate,pic:selected.pic||"",requestedBy:selected.requestedBy,description:selected.description});setEditMode(true);};
+  const startEdit=()=>{
+    setEditForm({
+      title:selected.title||"",
+      category:selected.category||"Social Media Post",
+      dueDate:selected.dueDate||"",
+      pic:selected.pic||"",
+      requestedBy:selected.requestedBy||"Sales Team",
+      description:selected.description||""
+    });
+    setEditMode(true);
+  };
   const saveEdit=()=>{const u={...selected,...editForm,pic:editForm.pic||null};setTasks(prev=>prev.map(t=>t.id===u.id?u:t));setSelected(u);setEditMode(false);};
 
   // FIX #4: Detail file upload fix
@@ -328,14 +339,25 @@ function BoardApp() {
           </span>
           <div style={{display:"flex",alignItems:"center",gap:"6px"}}>
             {task.pic&&<PICAvatar name={task.pic} size={20}/>}
-            {(task.attachments||[]).length>0&&<span style={{fontSize:"10px",color:"#9ca3af",display:"flex",alignItems:"center",gap:"2px"}}><i className="ti ti-paperclip" style={{fontSize:"11px"}}/>{task.attachments.length}</span>}
+            {((task.attachments||[]).length+(task.attachmentLinks||[]).length)>0&&(
+              <span style={{fontSize:"10px",color:"#9ca3af",display:"flex",alignItems:"center",gap:"2px"}}>
+                <i className="ti ti-paperclip" style={{fontSize:"11px"}}/>
+                {(task.attachments||[]).length+(task.attachmentLinks||[]).length}
+              </span>
+            )}
           </div>
         </div>
-        <div style={{display:"flex",gap:"5px",marginTop:"8px",flexWrap:"wrap"}} onClick={e=>e.stopPropagation()}>
-          {task.status==="request"&&<button onClick={()=>moveTask(task.id,"todo")} style={{fontSize:"11px",padding:"3px 10px",background:G[50],color:G[700],border:`1px solid ${G[200]}`,borderRadius:"20px",cursor:"pointer"}}>Assign → Todo</button>}
-          {task.status!=="request"&&task.status!=="on_progress"&&<button onClick={()=>moveTask(task.id,"on_progress")} style={{fontSize:"11px",padding:"3px 10px",background:"#dbeafe",color:"#1e3a8a",border:"1px solid #bfdbfe",borderRadius:"20px",cursor:"pointer"}}>→ Progress</button>}
-          {task.status!=="request"&&task.status!=="finish"&&<button onClick={()=>moveTask(task.id,"finish")} style={{fontSize:"11px",padding:"3px 10px",background:"#d1fae5",color:"#064e3b",border:"1px solid #a7f3d0",borderRadius:"20px",cursor:"pointer"}}>✓ Finish</button>}
-          {task.status!=="request"&&task.status!=="todo"&&<button onClick={()=>moveTask(task.id,"todo")} style={{fontSize:"11px",padding:"3px 10px",background:"#ede9fe",color:"#4c1d95",border:"1px solid #ddd6fe",borderRadius:"20px",cursor:"pointer"}}>← Todo</button>}
+        <div style={{display:"flex",gap:"5px",marginTop:"8px",flexWrap:"wrap",justifyContent:"space-between"}} onClick={e=>e.stopPropagation()}>
+          <div style={{display:"flex",gap:"5px",flexWrap:"wrap"}}>
+            {task.status==="request"&&<button onClick={()=>moveTask(task.id,"todo")} style={{fontSize:"11px",padding:"3px 10px",background:G[50],color:G[700],border:`1px solid ${G[200]}`,borderRadius:"20px",cursor:"pointer"}}>Assign → Todo</button>}
+            {task.status!=="request"&&task.status!=="on_progress"&&<button onClick={()=>moveTask(task.id,"on_progress")} style={{fontSize:"11px",padding:"3px 10px",background:"#dbeafe",color:"#1e3a8a",border:"1px solid #bfdbfe",borderRadius:"20px",cursor:"pointer"}}>→ Progress</button>}
+            {task.status!=="request"&&task.status!=="finish"&&<button onClick={()=>moveTask(task.id,"finish")} style={{fontSize:"11px",padding:"3px 10px",background:"#d1fae5",color:"#064e3b",border:"1px solid #a7f3d0",borderRadius:"20px",cursor:"pointer"}}>✓ Finish</button>}
+            {task.status!=="request"&&task.status!=="todo"&&<button onClick={()=>moveTask(task.id,"todo")} style={{fontSize:"11px",padding:"3px 10px",background:"#ede9fe",color:"#4c1d95",border:"1px solid #ddd6fe",borderRadius:"20px",cursor:"pointer"}}>← Todo</button>}
+          </div>
+          {/* FIX #7: Tombol hapus di kanban card */}
+          <button onClick={e=>{e.stopPropagation();setSelected(task);setConfirmDelete(task.id);}} style={{fontSize:"11px",padding:"3px 8px",background:"#fff0f0",color:"#ef4444",border:"1px solid #fecaca",borderRadius:"20px",cursor:"pointer",display:"flex",alignItems:"center",gap:"3px"}}>
+            <i className="ti ti-trash" style={{fontSize:"11px"}}/>Hapus
+          </button>
         </div>
       </div>
     );
@@ -350,6 +372,19 @@ function BoardApp() {
 
   return(
     <div style={{fontFamily:"system-ui,sans-serif",background:"#f7f9f7",minHeight:"100vh"}}>
+
+      {/* FIX #6: Lightbox modal untuk preview gambar */}
+      {lightbox&&(
+        <div onClick={()=>setLightbox(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999,padding:"20px"}}>
+          <div onClick={e=>e.stopPropagation()} style={{position:"relative",maxWidth:"90vw",maxHeight:"90vh"}}>
+            <img src={lightbox.dataUrl} alt={lightbox.name} style={{maxWidth:"100%",maxHeight:"85vh",borderRadius:"12px",display:"block",objectFit:"contain"}}/>
+            <button onClick={()=>setLightbox(null)} style={{position:"absolute",top:"-14px",right:"-14px",background:"#fff",border:"none",cursor:"pointer",width:"32px",height:"32px",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",color:"#374151",boxShadow:"0 2px 8px rgba(0,0,0,0.3)"}}>
+              <i className="ti ti-x" style={{fontSize:"16px"}}/>
+            </button>
+            <p style={{margin:"8px 0 0 0",textAlign:"center",fontSize:"12px",color:"rgba(255,255,255,0.7)"}}>{lightbox.name}</p>
+          </div>
+        </div>
+      )}
       {/* HEADER */}
       <div style={{background:`linear-gradient(135deg,${G[800]},${G[600]})`,borderRadius:"0 0 22px 22px",marginBottom:"18px"}}>
         <div style={{padding:"18px 20px 0",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"10px"}}>
@@ -631,10 +666,11 @@ function BoardApp() {
                     <input type="date" value={editForm.dueDate} onChange={e=>setEditForm({...editForm,dueDate:e.target.value})} style={{width:"100%",boxSizing:"border-box",borderRadius:"8px",border:`1px solid ${G[200]}`,padding:"6px 10px",fontSize:"12px",background:"#fff"}}/>
                   </div>
                   <div>
-                    <label style={{display:"block",fontSize:"11px",fontWeight:"600",marginBottom:"4px",color:G[700]}}>PIC</label>
+                    <label style={{display:"block",fontSize:"11px",fontWeight:"600",marginBottom:"4px",color:G[700]}}>PIC (Designer)</label>
                     <select value={editForm.pic||""} onChange={e=>setEditForm({...editForm,pic:e.target.value})} style={{width:"100%",boxSizing:"border-box",borderRadius:"8px",border:`1px solid ${G[200]}`,padding:"6px 10px",fontSize:"12px",background:"#fff"}}>
-                      <option value="">Belum assign</option>
-                      {DESIGNERS.map(d=><option key={d}>{d}</option>)}
+                      <option value="">— Belum assign —</option>
+                      <option value="Denny">👤 Denny</option>
+                      <option value="Arum">👤 Arum</option>
                     </select>
                   </div>
                   <div>
@@ -743,8 +779,11 @@ function BoardApp() {
                 :<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:"7px"}}>
                   {selected.attachments.map(att=>(
                     <div key={att.id} style={{background:"#f9fafb",border:"1px solid #e5e7eb",borderRadius:"12px",padding:"9px",position:"relative"}}>
-                      <button onClick={()=>removeAtt(att.id)} style={{position:"absolute",top:"5px",right:"5px",background:"rgba(239,68,68,0.1)",border:"none",cursor:"pointer",width:"18px",height:"18px",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",color:"#ef4444",padding:0}}><i className="ti ti-x" style={{fontSize:"11px"}}/></button>
-                      {att.type==="image"&&att.dataUrl?<img src={att.dataUrl} alt={att.name} style={{width:"100%",height:"60px",objectFit:"cover",borderRadius:"7px",marginBottom:"5px",display:"block"}}/>:<div style={{width:"100%",height:"50px",background:"#fff",borderRadius:"7px",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:"5px"}}><i className={`ti ${att.type==="pdf"?"ti-file-type-pdf":"ti-file-spreadsheet"}`} style={{fontSize:"22px",color:"#6b7280"}}/></div>}
+                      <button onClick={()=>removeAtt(att.id)} style={{position:"absolute",top:"5px",right:"5px",background:"rgba(239,68,68,0.1)",border:"none",cursor:"pointer",width:"18px",height:"18px",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",color:"#ef4444",padding:0,zIndex:1}}><i className="ti ti-x" style={{fontSize:"11px"}}/></button>
+                      {att.type==="image"&&att.dataUrl
+                        ?<img src={att.dataUrl} alt={att.name} onClick={()=>setLightbox(att)} style={{width:"100%",height:"60px",objectFit:"cover",borderRadius:"7px",marginBottom:"5px",display:"block",cursor:"zoom-in"}}/>
+                        :<div style={{width:"100%",height:"50px",background:"#fff",borderRadius:"7px",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:"5px"}}><i className={`ti ${att.type==="pdf"?"ti-file-type-pdf":"ti-file-spreadsheet"}`} style={{fontSize:"22px",color:"#6b7280"}}/></div>
+                      }
                       <p style={{margin:"0 0 1px 0",fontSize:"10px",fontWeight:"500",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:"12px",color:"#374151"}}>{att.name}</p>
                       <p style={{margin:0,fontSize:"10px",color:"#9ca3af"}}>{att.size}</p>
                     </div>
