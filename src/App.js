@@ -431,6 +431,7 @@ function BoardApp() {
   ];
 
   return(
+    <React.Fragment>
     <div style={{fontFamily:"system-ui,sans-serif",background:"#f7f9f7",minHeight:"100vh"}}>
 
       {/* FIX #6: Lightbox modal untuk preview gambar */}
@@ -869,6 +870,7 @@ function BoardApp() {
         )}
       </div>
     </div>
+    </React.Fragment>
   );
 }
 
