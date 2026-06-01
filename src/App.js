@@ -508,13 +508,13 @@ function BoardApp() {
             </button>
           </div>
         </div>
-        {/* Custom range row */}
+        {/* Custom range row - muncul di kanan bawah dropdown */}
         {filterMode==="custom"&&(
-          <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap",padding:"8px 20px 0"}}>
+          <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap",padding:"10px 20px 0",justifyContent:"flex-end"}}>
             <span style={{fontSize:"12px",color:"rgba(255,255,255,0.8)"}}>Dari:</span>
-            <input type="date" value={customFrom} onChange={e=>setCustomFrom(e.target.value)} style={{fontSize:"12px",padding:"5px 10px",borderRadius:"10px",border:"1px solid rgba(255,255,255,0.3)",background:"rgba(255,255,255,0.12)",color:"#fff"}}/>
+            <input type="date" value={customFrom} onChange={e=>setCustomFrom(e.target.value)} style={{fontSize:"12px",padding:"5px 10px",borderRadius:"10px",border:"1px solid rgba(255,255,255,0.3)",background:"rgba(255,255,255,0.15)",color:"#fff"}}/>
             <span style={{fontSize:"12px",color:"rgba(255,255,255,0.8)"}}>Sampai:</span>
-            <input type="date" value={customTo} onChange={e=>setCustomTo(e.target.value)} style={{fontSize:"12px",padding:"5px 10px",borderRadius:"10px",border:"1px solid rgba(255,255,255,0.3)",background:"rgba(255,255,255,0.12)",color:"#fff"}}/>
+            <input type="date" value={customTo} onChange={e=>setCustomTo(e.target.value)} style={{fontSize:"12px",padding:"5px 10px",borderRadius:"10px",border:"1px solid rgba(255,255,255,0.3)",background:"rgba(255,255,255,0.15)",color:"#fff"}}/>
             {customFrom&&customTo&&<span style={{fontSize:"11px",background:"rgba(255,255,255,0.2)",color:"#fff",padding:"3px 9px",borderRadius:"20px",fontWeight:"600"}}>{filtered.length} task</span>}
           </div>
         )}
