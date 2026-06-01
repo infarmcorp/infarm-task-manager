@@ -254,6 +254,8 @@ function BoardApp() {
   const [anMode,setAnMode]=useState("all");
   const [anFrom,setAnFrom]=useState("");
   const [anTo,setAnTo]=useState("");
+  // Popup selamat saat task selesai
+  const [celebrate,setCelebrate]=useState(null);
   const detailFileRef=useRef(null);
 
   // Simpan ke localStorage hanya kalau tasks berubah (bukan saat mount)
@@ -324,8 +326,13 @@ function BoardApp() {
   },[tasks,anMode,anFrom,anTo]);
 
   const moveTask=(id,ns)=>{
-    setTasks(prev=>{const u=prev.map(t=>t.id!==id?t:{...t,status:ns});saveTasks(u);return u;});
+    let movedTask=null;
+    setTasks(prev=>{const u=prev.map(t=>{if(t.id!==id)return t;movedTask={...t,status:ns};return movedTask;});saveTasks(u);return u;});
     if(selected?.id===id)setSelected(prev=>({...prev,status:ns}));
+    // Trigger popup selamat kalau dipindah ke finish
+    if(ns==="finish"&&movedTask){
+      setCelebrate({name:movedTask.pic||"Tim Desain",title:movedTask.title});
+    }
   };
 
   // FIX #9: Delete dengan konfirmasi
@@ -473,6 +480,88 @@ function BoardApp() {
               <button onClick={()=>setDeletePopup(null)} style={{flex:1,padding:"10px",background:"#f3f4f6",color:"#374151",border:"none",borderRadius:"12px",cursor:"pointer",fontSize:"13px",fontWeight:"600"}}>Tidak</button>
               <button onClick={()=>{deleteTask(deletePopup.id);setDeletePopup(null);}} style={{flex:1,padding:"10px",background:"#ef4444",color:"#fff",border:"none",borderRadius:"12px",cursor:"pointer",fontSize:"13px",fontWeight:"600"}}>Ya, Hapus</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Popup SELAMAT saat task selesai - dengan animasi kembang api */}
+      {celebrate&&(
+        <div onClick={()=>setCelebrate(null)} style={{position:"fixed",inset:0,background:"rgba(13,61,36,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:10000,padding:"20px",overflow:"hidden"}}>
+          <style>{`
+            @keyframes fireworkBurst {
+              0% { transform: scale(0); opacity: 1; }
+              50% { opacity: 1; }
+              100% { transform: scale(1.6); opacity: 0; }
+            }
+            @keyframes popIn {
+              0% { transform: scale(0.6) translateY(20px); opacity: 0; }
+              60% { transform: scale(1.05) translateY(-5px); }
+              100% { transform: scale(1) translateY(0); opacity: 1; }
+            }
+            @keyframes confettiFall {
+              0% { transform: translateY(-100px) rotate(0deg); opacity: 1; }
+              100% { transform: translateY(600px) rotate(720deg); opacity: 0; }
+            }
+            @keyframes bounce {
+              0%,100% { transform: translateY(0); }
+              50% { transform: translateY(-10px); }
+            }
+            @keyframes shine {
+              0%,100% { opacity: 0.4; transform: scale(1); }
+              50% { opacity: 1; transform: scale(1.2); }
+            }
+          `}</style>
+
+          {/* Confetti jatuh */}
+          {Array.from({length:30}).map((_,i)=>{
+            const colors=["#22c55e","#3db87a","#fde68a","#60a5fa","#f472b6","#fb923c","#a78bfa"];
+            const left=Math.random()*100;
+            const delay=Math.random()*2;
+            const dur=2.5+Math.random()*2;
+            const size=6+Math.random()*8;
+            return <div key={i} style={{position:"absolute",top:0,left:`${left}%`,width:`${size}px`,height:`${size}px`,background:colors[i%colors.length],borderRadius:i%2===0?"50%":"2px",animation:`confettiFall ${dur}s linear ${delay}s infinite`}}/>;
+          })}
+
+          {/* Kembang api burst */}
+          {[{top:"15%",left:"18%",color:"#fde68a",delay:"0s"},{top:"22%",left:"80%",color:"#60a5fa",delay:"0.4s"},{top:"60%",left:"12%",color:"#f472b6",delay:"0.8s"},{top:"68%",left:"85%",color:"#22c55e",delay:"0.6s"},{top:"10%",left:"50%",color:"#fb923c",delay:"1s"}].map((fw,i)=>(
+            <div key={i} style={{position:"absolute",top:fw.top,left:fw.left,width:"60px",height:"60px",pointerEvents:"none"}}>
+              {Array.from({length:12}).map((_,j)=>(
+                <div key={j} style={{position:"absolute",top:"50%",left:"50%",width:"4px",height:"4px",borderRadius:"50%",background:fw.color,transform:`rotate(${j*30}deg) translateX(0)`,transformOrigin:"center",boxShadow:`0 -22px 0 ${fw.color}`,animation:`fireworkBurst 1.8s ease-out ${fw.delay} infinite`}}/>
+              ))}
+            </div>
+          ))}
+
+          {/* Card utama */}
+          <div onClick={e=>e.stopPropagation()} style={{position:"relative",background:"#fff",borderRadius:"28px",padding:"40px 32px 32px",width:"min(420px,92vw)",textAlign:"center",animation:"popIn 0.5s cubic-bezier(0.34,1.56,0.64,1)",boxShadow:"0 20px 60px rgba(0,0,0,0.3)",zIndex:2}}>
+            {/* Trophy / emoji */}
+            <div style={{fontSize:"64px",marginBottom:"8px",animation:"bounce 1.5s ease-in-out infinite",lineHeight:"1"}}>🎉</div>
+
+            {/* Bintang shine */}
+            <div style={{display:"flex",justifyContent:"center",gap:"12px",marginBottom:"16px"}}>
+              {["⭐","🎊","⭐"].map((s,i)=>(
+                <span key={i} style={{fontSize:"24px",display:"inline-block",animation:`shine 1.2s ease-in-out ${i*0.2}s infinite`}}>{s}</span>
+              ))}
+            </div>
+
+            <h2 style={{margin:"0 0 12px 0",fontSize:"24px",fontWeight:"800",background:`linear-gradient(135deg,${G[600]},${G[400]})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",lineHeight:"1.3"}}>
+              Selamat {celebrate.name}! 🥳
+            </h2>
+
+            <p style={{margin:"0 0 8px 0",fontSize:"15px",color:"#374151",fontWeight:"600",lineHeight:"1.5"}}>
+              Kamu telah menyelesaikan tugas
+            </p>
+
+            <div style={{background:G[50],borderRadius:"14px",padding:"12px 16px",marginBottom:"18px",border:`1px solid ${G[100]}`}}>
+              <p style={{margin:0,fontSize:"13px",color:G[700],fontWeight:"600"}}>✓ {celebrate.title}</p>
+            </div>
+
+            <p style={{margin:"0 0 24px 0",fontSize:"14px",color:"#6b7280",lineHeight:"1.6",fontStyle:"italic"}}>
+              "Terus semangat untuk hari ini, kerja kerasmu luar biasa! 💪✨"
+            </p>
+
+            <button onClick={()=>setCelebrate(null)} style={{width:"100%",padding:"14px",background:`linear-gradient(135deg,${G[700]},${G[400]})`,color:"#fff",border:"none",borderRadius:"14px",cursor:"pointer",fontSize:"15px",fontWeight:"700",boxShadow:`0 4px 14px ${G[300]}`}}>
+              Lanjut Semangat! 🚀
+            </button>
           </div>
         </div>
       )}
