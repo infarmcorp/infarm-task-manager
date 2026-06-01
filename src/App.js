@@ -250,6 +250,10 @@ function BoardApp() {
   const [exportMsg,setExportMsg]=useState("");
   const [linkCopied,setLinkCopied]=useState(false);
   const [lightbox,setLightbox]=useState(null); // FIX #6: image preview
+  // Filter tanggal khusus Analytics (berdasarkan deadline)
+  const [anMode,setAnMode]=useState("all");
+  const [anFrom,setAnFrom]=useState("");
+  const [anTo,setAnTo]=useState("");
   const detailFileRef=useRef(null);
 
   // Simpan ke localStorage hanya kalau tasks berubah (bukan saat mount)
@@ -304,11 +308,20 @@ function BoardApp() {
   const allByS=s=>tasks.filter(t=>t.status===s);
   const reminders=useMemo(()=>tasks.filter(t=>isSoon(t)),[tasks]);
   const analytics=useMemo(()=>{
-    const total=tasks.length,done=tasks.filter(t=>t.status==="finish").length,over=tasks.filter(t=>isOverdue(t)).length;
+    // Filter tasks berdasarkan anMode (deadline)
+    let at=[...tasks];
+    const t0=new Date();t0.setHours(0,0,0,0);
+    if(anMode==="week"){const n=new Date(t0);n.setDate(n.getDate()+7);at=at.filter(t=>{if(!t.dueDate)return false;const d=new Date(t.dueDate);return d>=t0&&d<=n;});}
+    else if(anMode==="month"){const n=new Date(t0);n.setMonth(n.getMonth()+1);at=at.filter(t=>{if(!t.dueDate)return false;const d=new Date(t.dueDate);return d>=t0&&d<=n;});}
+    else if(anMode==="custom"&&anFrom&&anTo){const from=new Date(anFrom);const to=new Date(anTo);to.setHours(23,59,59);at=at.filter(t=>{if(!t.dueDate)return false;const d=new Date(t.dueDate);return d>=from&&d<=to;});}
+    const total=at.length,done=at.filter(t=>t.status==="finish").length,over=at.filter(t=>isOverdue(t)).length;
     const byPIC={};
-    DESIGNERS.forEach(d=>{const dt=tasks.filter(t=>t.pic===d);byPIC[d]={total:dt.length,done:dt.filter(t=>t.status==="finish").length,over:dt.filter(t=>isOverdue(t)).length,prog:dt.filter(t=>t.status==="on_progress").length,rate:dt.length>0?Math.round(dt.filter(t=>t.status==="finish").length/dt.length*100):0};});
-    return{total,done,over,rate:total>0?Math.round(done/total*100):0,byPIC};
-  },[tasks]);
+    DESIGNERS.forEach(d=>{const dt=at.filter(t=>t.pic===d);byPIC[d]={total:dt.length,done:dt.filter(t=>t.status==="finish").length,over:dt.filter(t=>isOverdue(t)).length,prog:dt.filter(t=>t.status==="on_progress").length,rate:dt.length>0?Math.round(dt.filter(t=>t.status==="finish").length/dt.length*100):0};});
+    // Distribusi per status (pakai filtered tasks juga)
+    const statusDist={};
+    Object.keys(STATUS).forEach(k=>{statusDist[k]=at.filter(t=>t.status===k).length;});
+    return{total,done,over,rate:total>0?Math.round(done/total*100):0,byPIC,statusDist};
+  },[tasks,anMode,anFrom,anTo]);
 
   const moveTask=(id,ns)=>{
     setTasks(prev=>{const u=prev.map(t=>t.id!==id?t:{...t,status:ns});saveTasks(u);return u;});
@@ -641,6 +654,29 @@ function BoardApp() {
         {/* Analytics */}
         {view==="analytics"&&(
           <div>
+            {/* Filter tanggal Analytics */}
+            <div style={{background:"#fff",borderRadius:"14px",padding:"12px 16px",marginBottom:"14px",border:"1px solid #e5e7eb",display:"flex",gap:"10px",alignItems:"center",flexWrap:"wrap"}}>
+              <div style={{display:"flex",alignItems:"center",gap:"7px"}}>
+                <i className="ti ti-calendar-stats" style={{fontSize:"16px",color:G[500]}}/>
+                <span style={{fontSize:"13px",fontWeight:"600",color:"#111827"}}>Periode Kinerja:</span>
+              </div>
+              {[["all","Semua"],["week","Minggu Ini"],["month","Bulan Ini"],["custom","Custom"]].map(([k,l])=>(
+                <button key={k} onClick={()=>setAnMode(k)} style={{fontSize:"12px",padding:"6px 14px",borderRadius:"20px",border:`1px solid ${anMode===k?G[500]:"#e5e7eb"}`,background:anMode===k?G[500]:"#fff",color:anMode===k?"#fff":"#6b7280",cursor:"pointer",fontWeight:anMode===k?"600":"400"}}>{l}</button>
+              ))}
+              {anMode==="custom"&&(
+                <div style={{display:"flex",gap:"6px",alignItems:"center",flexWrap:"wrap"}}>
+                  <span style={{fontSize:"12px",color:"#6b7280"}}>Dari:</span>
+                  <input type="date" value={anFrom} onChange={e=>setAnFrom(e.target.value)} style={{fontSize:"12px",padding:"5px 10px",borderRadius:"10px",border:"1px solid #e5e7eb"}}/>
+                  <span style={{fontSize:"12px",color:"#6b7280"}}>Sampai:</span>
+                  <input type="date" value={anTo} onChange={e=>setAnTo(e.target.value)} style={{fontSize:"12px",padding:"5px 10px",borderRadius:"10px",border:"1px solid #e5e7eb"}}/>
+                </div>
+              )}
+              {anMode!=="all"&&(
+                <span style={{fontSize:"11px",background:G[50],color:G[700],padding:"4px 10px",borderRadius:"20px",border:`1px solid ${G[100]}`,fontWeight:"600",marginLeft:"auto"}}>
+                  {analytics.total} task dalam periode ini
+                </span>
+              )}
+            </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:"10px",marginBottom:"14px"}}>
               {[["Total Task",analytics.total,"ti-clipboard-list",G[500]],["Selesai",analytics.done,"ti-circle-check","#059669"],["Overdue",analytics.over,"ti-alert-circle","#ef4444"],["Completion",analytics.rate+"%","ti-chart-pie","#7c3aed"]].map(([l,v,ic,col])=>(
                 <div key={l} style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:"14px",padding:"14px",display:"flex",gap:"10px",alignItems:"center"}}>
@@ -678,7 +714,7 @@ function BoardApp() {
             </div>
             <div style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:"16px",padding:"16px"}}>
               <h3 style={{margin:"0 0 14px 0",fontSize:"14px",fontWeight:"600",color:"#111827"}}>Distribusi per status</h3>
-              {Object.entries(STATUS).map(([k,m])=>{const count=allByS(k).length,pct=analytics.total>0?Math.round(count/analytics.total*100):0;return(
+              {Object.entries(STATUS).map(([k,m])=>{const count=analytics.statusDist[k]||0,pct=analytics.total>0?Math.round(count/analytics.total*100):0;return(
                 <div key={k} style={{display:"flex",alignItems:"center",gap:"8px",marginBottom:"10px"}}>
                   <div style={{display:"flex",alignItems:"center",gap:"5px",minWidth:"110px"}}><span style={{width:"8px",height:"8px",borderRadius:"50%",background:m.dot}}/><span style={{fontSize:"12px",color:"#374151",fontWeight:"500"}}>{m.label}</span></div>
                   <div style={{flex:1,background:"#f3f4f6",borderRadius:"20px",height:"8px",overflow:"hidden"}}><div style={{width:pct+"%",height:"100%",background:m.dot,borderRadius:"20px",transition:"width .4s"}}/></div>
