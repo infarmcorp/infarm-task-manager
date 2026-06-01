@@ -243,6 +243,7 @@ function BoardApp() {
   const [editForm,setEditForm]=useState({});
   // FIX #9: Konfirmasi hapus
   const [confirmDelete,setConfirmDelete]=useState(null);
+  const [deletePopup,setDeletePopup]=useState(null); // task pending hapus dari kanban
   // FIX #3: Checklist
   const [newCheckText,setNewCheckText]=useState("");
   const [newCheckAssignee,setNewCheckAssignee]=useState("Denny");
@@ -414,8 +415,8 @@ function BoardApp() {
             {task.status!=="request"&&task.status!=="finish"&&<button onClick={()=>moveTask(task.id,"finish")} style={{fontSize:"11px",padding:"3px 10px",background:"#d1fae5",color:"#064e3b",border:"1px solid #a7f3d0",borderRadius:"20px",cursor:"pointer"}}>✓ Finish</button>}
             {task.status!=="request"&&task.status!=="todo"&&<button onClick={()=>moveTask(task.id,"todo")} style={{fontSize:"11px",padding:"3px 10px",background:"#ede9fe",color:"#4c1d95",border:"1px solid #ddd6fe",borderRadius:"20px",cursor:"pointer"}}>← Todo</button>}
           </div>
-          {/* FIX #7: Tombol hapus di kanban card */}
-          <button onClick={e=>{e.stopPropagation();setSelected(task);setConfirmDelete(task.id);}} style={{fontSize:"11px",padding:"3px 8px",background:"#fff0f0",color:"#ef4444",border:"1px solid #fecaca",borderRadius:"20px",cursor:"pointer",display:"flex",alignItems:"center",gap:"3px"}}>
+          {/* FIX #7: Tombol hapus di kanban card - buka popup konfirmasi */}
+          <button onClick={e=>{e.stopPropagation();setDeletePopup(task);}} style={{fontSize:"11px",padding:"3px 8px",background:"#fff0f0",color:"#ef4444",border:"1px solid #fecaca",borderRadius:"20px",cursor:"pointer",display:"flex",alignItems:"center",gap:"3px"}}>
             <i className="ti ti-trash" style={{fontSize:"11px"}}/>Hapus
           </button>
         </div>
@@ -445,6 +446,24 @@ function BoardApp() {
           </div>
         </div>
       )}
+      {/* Popup konfirmasi hapus dari kanban */}
+      {deletePopup&&(
+        <div onClick={()=>setDeletePopup(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999,padding:"20px"}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"18px",padding:"24px",width:"min(360px,92vw)",textAlign:"center"}}>
+            <div style={{width:"56px",height:"56px",borderRadius:"50%",background:"#fee2e2",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}>
+              <i className="ti ti-trash" style={{fontSize:"26px",color:"#ef4444"}}/>
+            </div>
+            <h3 style={{margin:"0 0 8px 0",fontSize:"16px",fontWeight:"700",color:"#111827"}}>Yakin mau hapus task ini?</h3>
+            <p style={{margin:"0 0 6px 0",fontSize:"13px",color:"#6b7280",lineHeight:"1.5"}}>"{deletePopup.title}"</p>
+            <p style={{margin:"0 0 20px 0",fontSize:"12px",color:"#9ca3af"}}>Task yang dihapus tidak bisa dikembalikan.</p>
+            <div style={{display:"flex",gap:"8px"}}>
+              <button onClick={()=>setDeletePopup(null)} style={{flex:1,padding:"10px",background:"#f3f4f6",color:"#374151",border:"none",borderRadius:"12px",cursor:"pointer",fontSize:"13px",fontWeight:"600"}}>Tidak</button>
+              <button onClick={()=>{deleteTask(deletePopup.id);setDeletePopup(null);}} style={{flex:1,padding:"10px",background:"#ef4444",color:"#fff",border:"none",borderRadius:"12px",cursor:"pointer",fontSize:"13px",fontWeight:"600"}}>Ya, Hapus</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* HEADER */}
       <div style={{background:`linear-gradient(135deg,${G[800]},${G[600]})`,borderRadius:"0 0 22px 22px",marginBottom:"18px"}}>
         <div style={{padding:"18px 20px 0",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"10px"}}>
@@ -601,7 +620,7 @@ function BoardApp() {
               </thead>
               <tbody>
                 {filtered.map((task,i)=>(
-                  <tr key={task.id} onClick={()=>{setSelected(task);setEditMode(false);setConfirmDelete(null);}} style={{borderBottom:"1px solid #f3f4f6",cursor:"pointer",background:i%2===0?"#fff":"#fafafa"}}
+                  <tr key={task.id} onClick={()=>{setSelected(task);setEditMode(false);setConfirmDelete(null);setView("kanban");}} style={{borderBottom:"1px solid #f3f4f6",cursor:"pointer",background:i%2===0?"#fff":"#fafafa"}}
                     onMouseEnter={e=>e.currentTarget.style.background=G[50]}
                     onMouseLeave={e=>e.currentTarget.style.background=i%2===0?"#fff":"#fafafa"}>
                     <td style={{padding:"10px",fontWeight:"500",color:"#111827",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.title}</td>
@@ -670,8 +689,8 @@ function BoardApp() {
           </div>
         )}
 
-        {/* DETAIL PANEL */}
-        {selected&&(
+        {/* DETAIL PANEL - hanya di kanban view */}
+        {selected&&view==="kanban"&&(
           <div style={{marginTop:"18px",background:"#fff",border:`2px solid ${G[100]}`,borderRadius:"20px",padding:"20px"}}>
             {/* Header detail */}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"start",marginBottom:"14px"}}>
